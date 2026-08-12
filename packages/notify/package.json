@@ -1,0 +1,40 @@
+{
+  "name": "@misterzhouzhou/pi-notify",
+  "version": "0.1.0",
+  "description": "A macOS desktop notification extension for Pi.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "notification",
+    "macos",
+    "terminal"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
+    "directory": "packages/notify"
+  },
+  "files": [
+    "index.ts",
+    "notifier.ts",
+    "assets/pi.png",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

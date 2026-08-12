@@ -1,0 +1,53 @@
+{
+  "name": "@misterzhouzhou/pi-extensions",
+  "version": "0.1.0",
+  "description": "A collection of Pi extensions maintained by MisterZhouZhou.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "validate": "node scripts/validate-packages.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "npm run typecheck && npm run validate && npm test",
+    "prepare-release": "node scripts/prepare-release.mjs",
+    "publish-release": "node scripts/publish-release.mjs"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "terminal",
+    "agent"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git"
+  },
+  "files": [
+    "packages/notify",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./packages/notify/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "^0.84.1",
+    "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@types/node": "^22.19.0",
+    "typescript": "^6.0.0"
+  }
+}
