@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,6 +42,7 @@ export async function prepareRelease(argv, options = {}) {
       [`docs/announcement-${tag}.md`]: `# ${tag} Announcement\n\nPublished packages:\n\n${evidence}\n`,
       [`docs/publish-checklist-${tag}.md`]: `# ${tag} Publish Checklist\n\n- [ ] npm run check\n- [ ] Review both npm pack outputs\n- [ ] Commit, tag, push, and create the matching GitHub Release\n- [ ] Dispatch publish.yml from main and approve npm-release\n\n${evidence}\n`,
     };
+    await mkdir(path.join(root, "docs"), { recursive: true });
     for (const [relative, content] of Object.entries(files)) {
       const file = path.join(root, relative);
       originals.set(file, null);

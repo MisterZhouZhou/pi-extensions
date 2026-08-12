@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -28,5 +28,23 @@ test("prepare-release refuses versions already present on npm", async () => {
   await assert.rejects(
     () => prepareRelease(["v0.2.0"], { registryVersion: async (name) => name.endsWith("pi-notify") }),
     /already exists on npm/u,
+  );
+});
+
+test("prepare-release --write creates docs when the directory is absent", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "pi-prepare-write-test-"));
+  await cp(repoRoot, root, {
+    recursive: true,
+    filter: (source) => !source.includes(`${path.sep}node_modules`) && !source.includes(`${path.sep}.git`),
+  });
+  await rm(path.join(root, "docs"), { recursive: true, force: true });
+  const result = await prepareRelease(["v0.2.0", "--write"], {
+    root,
+    registryVersion: async () => false,
+  });
+  assert.equal(result.write, true);
+  assert.match(
+    await readFile(path.join(root, "docs/github-release-v0.2.0.md"), "utf8"),
+    /@misterzhouzhou\/pi-extensions@0\.2\.0/u,
   );
 });

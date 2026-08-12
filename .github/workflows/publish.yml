@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 20
     environment: npm-release
     env:
+      GH_TOKEN: ${{ github.token }}
       PI_RELEASE_ENVIRONMENT: npm-release
       RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
