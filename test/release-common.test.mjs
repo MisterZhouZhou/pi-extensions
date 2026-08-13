@@ -10,6 +10,7 @@ import {
   publishTarball,
   releaseUnit,
   releaseUnits,
+  run,
   stableVersion,
 } from "../scripts/release-common.mjs";
 
@@ -65,4 +66,13 @@ test("authenticates and publishes an exact tarball through the public registry",
     ["whoami", "--registry=https://registry.npmjs.org"],
     ["publish", "/tmp/checked.tgz", "--ignore-scripts", "--access", "public", "--tag", "latest", "--registry=https://registry.npmjs.org"],
   ]);
+});
+
+test("includes captured stdout when a command fails", async () => {
+  await assert.rejects(
+    () => run(process.execPath, ["-e", "console.log(process.env.RELEASE_TEST_DETAIL); process.exit(1)"], {
+      env: { ...process.env, RELEASE_TEST_DETAIL: "visible failure details" },
+    }),
+    /visible failure details/u,
+  );
 });

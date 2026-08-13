@@ -16,12 +16,23 @@ const TAG_SELECTORS = new Map([
 ]);
 
 export async function run(command, args, options = {}) {
-  const result = await execFileAsync(command, args, {
-    cwd: options.cwd ?? ROOT,
-    env: options.env ?? process.env,
-    maxBuffer: 20 * 1024 * 1024,
-  });
-  return result.stdout.trim();
+  try {
+    const result = await execFileAsync(command, args, {
+      cwd: options.cwd ?? ROOT,
+      env: options.env ?? process.env,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    return result.stdout.trim();
+  } catch (error) {
+    if (error instanceof Error) {
+      const details = [error.stdout, error.stderr]
+        .filter((output) => typeof output === "string" && output.trim().length > 0)
+        .map((output) => output.trim())
+        .filter((output) => !error.message.includes(output));
+      if (details.length > 0) error.message = `${error.message.trimEnd()}\n${details.join("\n")}`;
+    }
+    throw error;
+  }
 }
 
 export async function readJson(file) {

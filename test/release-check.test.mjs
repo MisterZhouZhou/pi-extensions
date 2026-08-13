@@ -23,8 +23,16 @@ test("release-check rejects all arguments", async () => {
   await assert.rejects(() => releaseCheck(["--write"]), /does not accept arguments/u);
 });
 
-test("release-check reports independent registry status without changing the lockfile", async () => {
+test("release-check reports manifest versions independently without changing the lockfile", async () => {
   const root = await fixture();
+  const rootManifestPath = path.join(root, "package.json");
+  const notifyManifestPath = path.join(root, "packages/notify/package.json");
+  const rootManifest = JSON.parse(await readFile(rootManifestPath, "utf8"));
+  const notifyManifest = JSON.parse(await readFile(notifyManifestPath, "utf8"));
+  rootManifest.version = "2.3.4";
+  notifyManifest.version = "7.8.9";
+  await writeFile(rootManifestPath, `${JSON.stringify(rootManifest, null, 2)}\n`);
+  await writeFile(notifyManifestPath, `${JSON.stringify(notifyManifest, null, 2)}\n`);
   const lockfile = path.join(root, "package-lock.json");
   const lockfileBefore = await readFile(lockfile);
   const calls = [];
@@ -35,8 +43,8 @@ test("release-check reports independent registry status without changing the loc
   });
 
   assert.deepEqual(result.packages, [
-    { selector: "notify", name: "@misterzhouzhou/pi-notify", version: "0.1.0", status: "published" },
-    { selector: "root", name: "@misterzhouzhou/pi-extensions", version: "0.1.0", status: "pending" },
+    { selector: "notify", name: "@misterzhouzhou/pi-notify", version: "7.8.9", status: "published" },
+    { selector: "root", name: "@misterzhouzhou/pi-extensions", version: "2.3.4", status: "pending" },
   ]);
   assert.equal(result.checked, true);
   assert.deepEqual(calls, []);
