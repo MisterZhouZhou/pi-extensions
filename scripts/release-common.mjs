@@ -141,9 +141,11 @@ export async function npmWhoami(options = {}) {
 
 export async function publishTarball(file, options = {}) {
   const runner = options.runner ?? run;
+  const env = { ...(options.env ?? process.env) };
+  if (options.otp !== undefined) env.NPM_CONFIG_OTP = options.otp;
   await runner(
     "npm",
     ["publish", file, "--ignore-scripts", "--access", "public", "--tag", "latest", `--registry=${REGISTRY}`],
-    { cwd: options.root ?? ROOT, env: options.env ?? process.env },
+    { cwd: options.root ?? ROOT, env },
   );
 }

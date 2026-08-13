@@ -142,6 +142,19 @@ function printSummary(log, unit, previousVersion, version, account, artifact) {
   log(lines.join("\n"));
 }
 
+function requiresOtp(error) {
+  const details = [error?.message, error?.stderr]
+    .filter((value) => typeof value === "string")
+    .join("\n");
+  return /EOTP|one-time password|two-factor authentication.*required|bypass 2fa/iu.test(details);
+}
+
+async function requestOtp(ask) {
+  const otp = (await ask("npm 要求二次验证，请输入 6 位 OTP："))?.trim();
+  if (!/^\d{6}$/u.test(otp)) throw new Error("npm OTP must be exactly 6 digits");
+  return otp;
+}
+
 async function restoreSnapshots(snapshots) {
   const failures = [];
   for (const [file, contents] of snapshots) {
@@ -191,7 +204,9 @@ export async function releaseLocal(argv = [], options = {}) {
   if (!stableVersion(version)) {
     throw new Error(`new version must be a stable X.Y.Z version: ${version}`);
   }
-  if (compareStableVersions(version, previousVersion) !== 1) {
+  const versionComparison = compareStableVersions(version, previousVersion);
+  const resumingCurrentVersion = selectorInput.explicitVersion !== undefined && versionComparison === 0;
+  if (versionComparison !== 1 && !resumingCurrentVersion) {
     throw new Error(`new version must be greater than current version ${previousVersion}`);
   }
   if (env.NPM_TOKEN || env.NODE_AUTH_TOKEN) {
@@ -260,6 +275,15 @@ export async function releaseLocal(argv = [], options = {}) {
         await publishArtifact(artifact.file, { root, env, runner });
         return releaseIdentity(unit, version, artifact, "published");
       } catch (publishError) {
+        if (requiresOtp(publishError)) {
+          const otp = await requestOtp(ask);
+          try {
+            await publishArtifact(artifact.file, { root, env, runner, otp });
+            return releaseIdentity(unit, version, artifact, "published");
+          } catch (retryError) {
+            publishError = retryError;
+          }
+        }
         const verification = await confirmPublishedAfterError({
           lookup,
           name: unit.manifest.name,

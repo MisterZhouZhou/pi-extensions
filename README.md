@@ -73,6 +73,8 @@ npm run release-local -- root 0.1.1
 
 `release-local` 会修改所选包版本、同步 lockfile、运行检查和打包、查询 npm，并使用本机已有的 `npm login` 身份发布。publish 开始前取消或失败会逐字节恢复版本文件；publish 开始后不会自动回滚。该命令不会 commit、tag 或 push。
 
+若 npm 要求发布二次验证，命令会在首次 publish 被拒绝后提示输入 6 位 OTP 并自动重试。若 publish 状态未知且 npm 确认版本不存在，先提交脚本保留的版本文件，再显式传入当前版本恢复发布，例如 `npm run release-local -- notify 0.1.1`；不要选择新的 patch 版本。
+
 ### 3. 通过 GitHub Actions 发布：`release-github`
 
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "@misterzhouzhou/pi-notify",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A macOS desktop notification extension for Pi.",
   "keywords": [
     "pi-package",

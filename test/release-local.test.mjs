@@ -73,6 +73,7 @@ async function state(options = {}) {
     calls,
     questions,
     publishCalls: [],
+    publishOptions: [],
     summaries: [],
     warnings: [],
     options: {
@@ -104,9 +105,13 @@ async function state(options = {}) {
         if (options.failAt === "whoami") throw new Error("whoami failed");
         return "MisterZhouZhou";
       },
-      publishTarball: async (file) => {
+      publishTarball: async (file, publishOptions) => {
         calls.push({ operation: "publish", file });
         result.publishCalls.push(file);
+        result.publishOptions.push(publishOptions);
+        if (options.requireOtp && publishOptions.otp === undefined) {
+          throw new Error("Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages");
+        }
         if (options.failAt === "publish") throw new Error("publish failed");
       },
       sleep: async (milliseconds) => calls.push({ operation: "sleep", milliseconds }),
@@ -227,7 +232,7 @@ test("scopes preflight paths to the selected release unit", () => {
 });
 
 test("rejects invalid versions, local tokens, and dirty release paths before writing", async (t) => {
-  for (const version of ["0.1.0", "0.0.9", "0.1.1-beta.1", "01.0.0"]) {
+  for (const version of ["0.0.9", "0.1.1-beta.1", "01.0.0"]) {
     const current = await state();
     t.after(current.cleanup);
     const original = await snapshots(current);
@@ -261,6 +266,20 @@ test("rejects invalid versions, local tokens, and dirty release paths before wri
     "status", "--porcelain", "--untracked-files=no", "--",
     "packages/notify", "package-lock.json", "scripts/release-local.mjs", "scripts/release-common.mjs", "scripts/publish-release.mjs",
   ]);
+});
+
+test("allows an explicit current version to resume an unpublished release", async (t) => {
+  const current = await state();
+  t.after(current.cleanup);
+
+  const result = await localRelease(["notify", "0.1.0"], current.options);
+
+  assert.equal(result.action, "published");
+  assert.equal(result.version, "0.1.0");
+  assert.deepEqual(
+    current.calls.find(({ operation }) => operation === "registry").args,
+    ["@misterzhouzhou/pi-notify", "0.1.0"],
+  );
 });
 
 test("rolls back exact bytes for every failure before npm publish and for cancellation", async (t) => {
@@ -334,6 +353,22 @@ test("publishes a package-level patch selected from the version menu", async (t)
     ["@misterzhouzhou/pi-notify", "0.1.1"],
   );
   assert.equal(current.publishCalls.length, 1);
+});
+
+test("retries npm publish with an interactive OTP when the registry requires 2FA", async (t) => {
+  const current = await state({ answers: ["y", "123456"], requireOtp: true });
+  t.after(current.cleanup);
+
+  const result = await localRelease(["notify", "0.1.1"], current.options);
+
+  assert.equal(result.action, "published");
+  assert.deepEqual(current.questions, [
+    "Publish now? [y/N] ",
+    "npm 要求二次验证，请输入 6 位 OTP：",
+  ]);
+  assert.equal(current.publishCalls.length, 2);
+  assert.equal(current.publishOptions[0].otp, undefined);
+  assert.equal(current.publishOptions[1].otp, "123456");
 });
 
 test("selects root and a custom version, then restores exact files on cancellation", async (t) => {
