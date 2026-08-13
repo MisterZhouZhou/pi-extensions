@@ -7,7 +7,9 @@
     "validate": "node scripts/validate-packages.mjs",
     "test": "node --test test/*.test.mjs",
     "check": "npm run typecheck && npm run validate && npm test",
-    "prepare-release": "node scripts/prepare-release.mjs",
+    "release-check": "node scripts/release-check.mjs",
+    "release-local": "node scripts/release-local.mjs",
+    "release-github": "node scripts/release-github.mjs",
     "publish-release": "node scripts/publish-release.mjs"
   },
   "keywords": [

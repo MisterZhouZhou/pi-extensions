@@ -1,16 +1,19 @@
-name: Publish npm release
+name: Publish npm package
 
 on:
+  push:
+    tags:
+      - "pi-extensions@*"
+      - "pi-notify@*"
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: Release tag (vX.Y.Z)
+      package:
+        description: Package to publish
         required: true
-        type: string
-      confirmation:
-        description: Enter the same release tag to confirm
-        required: true
-        type: string
+        type: choice
+        options:
+          - root
+          - notify
 
 permissions:
   contents: read
@@ -18,32 +21,60 @@ permissions:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && inputs.release_tag == inputs.confirmation
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: npm-release
     env:
-      GH_TOKEN: ${{ github.token }}
       PI_RELEASE_ENVIRONMENT: npm-release
-      RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
-      - name: Validate release input
-        shell: bash
-        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
-      - name: Checkout release tag
+      - name: Checkout release commit
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.release_tag }}
           fetch-depth: 0
+      - name: Resolve release selector
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PACKAGE: ${{ inputs.package }}
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            case "$REF_NAME" in
+              pi-extensions@*) selector=root; manifest=package.json ;;
+              pi-notify@*) selector=notify; manifest=packages/notify/package.json ;;
+              *) echo "Unsupported release tag: $REF_NAME" >&2; exit 1 ;;
+            esac
+            tag_version="${REF_NAME##*@}"
+            manifest_version="$(node -p "require('./$manifest').version")"
+            [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            [[ "$tag_version" == "$manifest_version" ]] || {
+              echo "Tag version $tag_version does not match $manifest version $manifest_version" >&2
+              exit 1
+            }
+          else
+            [[ "$REF" == "refs/heads/main" ]] || {
+              echo "Manual publishing must run from main" >&2
+              exit 1
+            }
+            selector="$INPUT_PACKAGE"
+            [[ "$selector" == "root" || "$selector" == "notify" ]]
+          fi
+          echo "selector=$selector" >> "$GITHUB_OUTPUT"
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.20.0
           cache: npm
-          registry-url: https://registry.npmjs.org
+      - name: Set up npm with trusted publishing support
+        run: npm install --global npm@11.12.1
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Check repository
         run: npm run check
-      - name: Publish release
-        run: npm run publish-release -- "$RELEASE_TAG" --github-actions
+      - name: Publish selected package
+        env:
+          PI_RELEASE_SELECTOR: ${{ steps.release.outputs.selector }}
+        run: npm run publish-release -- "$PI_RELEASE_SELECTOR" --github-actions

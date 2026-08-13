@@ -44,21 +44,67 @@ pi -e ./packages/notify
 
 ## 发布流程
 
-正式发布仅允许通过 GitHub Actions 和 npm Trusted Publishing/OIDC 完成，不使用长期 `NPM_TOKEN`：
+根聚合包 `@misterzhouzhou/pi-extensions` 与独立包 `@misterzhouzhou/pi-notify` 分别维护版本。发布相关命令分为四个职责明确的入口。
 
-1. 为 `@misterzhouzhou/pi-extensions`、`@misterzhouzhou/pi-notify` 配置 Trusted Publisher：仓库 `MisterZhouZhou/pi-extensions`，工作流 `publish.yml`，environment `npm-release`。
-2. 执行 `npm run prepare-release -- vX.Y.Z` 预览，再执行 `npm run prepare-release -- vX.Y.Z --write` 写入版本和发布文档。
-3. 运行 `npm run check` 和两种 `npm pack --dry-run --json`，审核并提交改动。
-4. 创建并推送 `vX.Y.Z` tag，以 `docs/github-release-vX.Y.Z.md` 作为 GitHub Release 正文。
-5. 在 `main` 分支手动触发 **Publish npm release**，两项输入都填写相同的 `vX.Y.Z`，并审批 `npm-release` environment。
-
-本机只允许：
+### 1. 检查当前发布状态：`release-check`
 
 ```bash
-npm run publish-release -- vX.Y.Z --dry-run
+npm run release-check
 ```
 
-脚本会检查 tag、`origin/main`、GitHub Release 正文和 tarball；缺少任一发布前置条件都会安全失败。本机禁止真实 `npm publish`。
+该命令只读取所有 package 的当前版本并查询 npm，输出每个版本是 `published` 还是 `pending`。它不会修改 manifest、lockfile，不会打包、发布或操作 Git。
+
+### 2. 本机直接发布 npm：`release-local`
+
+```bash
+# 交互选择 root/notify，并输入目标版本
+npm run release-local
+
+# 指定单包和目标版本
+npm run release-local -- notify 0.1.1
+npm run release-local -- root 0.1.1
+```
+
+`release-local` 每次只发布一个包，不支持 `all`。它修改所选包版本、同步 lockfile、运行检查和打包、查询 npm，并使用本机已有的 `npm login` 身份发布。最终摘要后必须输入 `y` 才会执行 `npm publish`。publish 开始前取消或失败会逐字节恢复版本文件；publish 开始后不会自动回滚。该命令不会 commit、tag 或 push。
+
+### 3. 通过 GitHub Actions 发布：`release-github`
+
+```bash
+# 只发布独立 Notify 包
+npm run release-github -- notify
+
+# 只发布根聚合包
+npm run release-github -- root
+
+# 同一 release commit 为两个包分别创建 tag
+npm run release-github -- all
+```
+
+版本一律由脚本交互询问，因此不要附加版本号或 `--all`、`--notify-version` 等组合参数。脚本要求：当前分支为 `main`、整个工作区（包括 untracked）干净、存在 `origin`。它先 `fetch`；本地仅落后时执行 `pull --ff-only`，本地领先或与远端分叉时停止，不会 merge、rebase 或 force push。
+
+确认后，脚本只提交目标 manifest 与根 `package-lock.json`，创建包级 tag，并用一次原子 Git push 推送 `main` 和 tag：
+
+```bash
+git push --atomic origin main pi-notify@0.1.1
+git push --atomic origin main pi-notify@0.1.1 pi-extensions@0.1.1
+```
+
+Git refs 的 push 是原子的；但 `all` 触发的两个 Actions job 和两个 npm publish **不是原子事务**，仍可能一个成功、另一个失败。Notify 源码更新通常应选择 `all`，这样独立安装用户和聚合包用户都能获得新版本。
+
+release commit 之前失败或取消会恢复脚本改动；commit 创建之后的 tag/push 失败不会 reset 或删除本地 commit/tag，脚本会输出可重试的 `git push --atomic ...` 命令。
+
+### 4. Actions 内部执行器：`publish-release`
+
+`publish-release` 不是维护者在本机使用的发布入口。`.github/workflows/publish.yml` 收到 package tag 或手动 dispatch 后，在受信任的 GitHub Actions/OIDC 环境中调用：
+
+```bash
+npm run publish-release -- notify --github-actions
+npm run publish-release -- root --github-actions
+```
+
+它负责验证 Actions 仓库、workflow、environment、selector 与 tag/manifest 版本，随后运行 `npm run check`、打包、查询 registry 并执行真正的 `npm publish`。tag 只是触发信号，`publish-release` 才是 Actions 内实际发布 npm 包的程序。本机调用或 `--dry-run` 会被拒绝。
+
+也可以从 GitHub Actions 的 **Publish npm package** 页面选择 `root` 或 `notify`，从 `main` 手动发布当前 manifest 版本。首次使用前，需分别为两个 npm 包配置 Trusted Publisher：仓库 `MisterZhouZhou/pi-extensions`、工作流 `publish.yml`、environment `npm-release`；无需长期 `NPM_TOKEN`。
 
 ## 新增 Package
 
