@@ -11,6 +11,7 @@ import {
   releaseUnit,
   releaseUnits,
   run,
+  runInteractive,
   stableVersion,
 } from "../scripts/release-common.mjs";
 
@@ -60,13 +61,36 @@ test("authenticates and publishes an exact tarball through the public registry",
   };
 
   assert.equal(await npmWhoami({ root: "/repo", env: {}, runner }), "MisterZhouZhou");
-  await publishTarball("/tmp/checked.tgz", { root: "/repo", env: { EXISTING: "yes" }, runner, otp: "123456" });
+  await publishTarball("/tmp/checked.tgz", { root: "/repo", env: { EXISTING: "yes" }, runner });
 
   assert.deepEqual(calls.map(({ args }) => args), [
     ["whoami", "--registry=https://registry.npmjs.org"],
     ["publish", "/tmp/checked.tgz", "--ignore-scripts", "--access", "public", "--tag", "latest", "--registry=https://registry.npmjs.org"],
   ]);
-  assert.deepEqual(calls[1].options.env, { EXISTING: "yes", NPM_CONFIG_OTP: "123456" });
+  assert.deepEqual(calls[1].options.env, { EXISTING: "yes" });
+});
+
+test("uses an inherited terminal for interactive npm publishing", async () => {
+  const calls = [];
+  const interactiveRunner = async (command, args, options) => calls.push({ command, args, options });
+
+  await publishTarball("/tmp/checked.tgz", {
+    root: "/repo",
+    env: { EXISTING: "yes" },
+    interactive: true,
+    interactiveRunner,
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, "npm");
+  assert.deepEqual(calls[0].options, { cwd: "/repo", env: { EXISTING: "yes" } });
+});
+
+test("interactive runner reports non-zero child exits", async () => {
+  await assert.rejects(
+    () => runInteractive(process.execPath, ["-e", "process.exit(7)"]),
+    /exit code 7/u,
+  );
 });
 
 test("includes captured stdout when a command fails", async () => {

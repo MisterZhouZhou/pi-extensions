@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -33,6 +33,25 @@ export async function run(command, args, options = {}) {
     }
     throw error;
   }
+}
+
+export async function runInteractive(command, args, options = {}) {
+  await new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd ?? ROOT,
+      env: options.env ?? process.env,
+      stdio: "inherit",
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      const reason = signal ? `signal ${signal}` : `exit code ${code}`;
+      reject(new Error(`${command} ${args[0]} failed with ${reason}`));
+    });
+  });
 }
 
 export async function readJson(file) {
@@ -140,12 +159,12 @@ export async function npmWhoami(options = {}) {
 }
 
 export async function publishTarball(file, options = {}) {
-  const runner = options.runner ?? run;
-  const env = { ...(options.env ?? process.env) };
-  if (options.otp !== undefined) env.NPM_CONFIG_OTP = options.otp;
+  const runner = options.interactive
+    ? (options.interactiveRunner ?? runInteractive)
+    : (options.runner ?? run);
   await runner(
     "npm",
     ["publish", file, "--ignore-scripts", "--access", "public", "--tag", "latest", `--registry=${REGISTRY}`],
-    { cwd: options.root ?? ROOT, env },
+    { cwd: options.root ?? ROOT, env: options.env ?? process.env },
   );
 }

@@ -109,15 +109,6 @@ async function state(options = {}) {
         calls.push({ operation: "publish", file });
         result.publishCalls.push(file);
         result.publishOptions.push(publishOptions);
-        if (options.requireOtp && publishOptions.otp === undefined) {
-          throw new Error("EOTP: This operation requires a one-time password");
-        }
-        if (options.rejectOtp && publishOptions.otp !== undefined) {
-          throw new Error("EOTP: The one-time password is invalid or expired");
-        }
-        if (options.requireTrustedCredential) {
-          throw new Error("Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages");
-        }
         if (options.failAt === "publish") throw new Error("publish failed");
       },
       sleep: async (milliseconds) => calls.push({ operation: "sleep", milliseconds }),
@@ -361,47 +352,16 @@ test("publishes a package-level patch selected from the version menu", async (t)
   assert.equal(current.publishCalls.length, 1);
 });
 
-test("retries npm publish with an interactive OTP when the registry requires 2FA", async (t) => {
-  const current = await state({ answers: ["y", "123456"], requireOtp: true });
+test("delegates security-key authentication to interactive npm publish", async (t) => {
+  const current = await state({ answers: ["y"] });
   t.after(current.cleanup);
 
   const result = await localRelease(["notify", "0.1.1"], current.options);
 
   assert.equal(result.action, "published");
-  assert.deepEqual(current.questions, [
-    "Publish now? [y/N] ",
-    "npm 要求二次验证，请输入 6 位 OTP：",
-  ]);
-  assert.equal(current.publishCalls.length, 2);
-  assert.equal(current.publishOptions[0].otp, undefined);
-  assert.equal(current.publishOptions[1].otp, "123456");
-});
-
-test("reports an invalid or expired OTP without calling the result unknown", async (t) => {
-  const current = await state({ answers: ["y", "123456"], requireOtp: true, rejectOtp: true });
-  t.after(current.cleanup);
-
-  await assert.rejects(
-    () => localRelease(["notify", "0.1.1"], current.options),
-    /OTP 无效或已过期.*尚未发布/us,
-  );
-  assert.equal(current.publishCalls.length, 2);
-  assert.equal(current.calls.filter(({ operation }) => operation === "registry").length, 1);
-});
-
-test("does not request an OTP for the granular-token publishing policy error", async (t) => {
-  const current = await state({
-    answers: ["y"],
-    requireTrustedCredential: true,
-  });
-  t.after(current.cleanup);
-
-  await assert.rejects(
-    () => localRelease(["notify", "0.1.1"], current.options),
-    /尚未创建.*Bypass 2FA.*首次发布.*启用 2FA/us,
-  );
   assert.deepEqual(current.questions, ["Publish now? [y/N] "]);
   assert.equal(current.publishCalls.length, 1);
+  assert.equal(current.publishOptions[0].interactive, true);
 });
 
 test("selects root and a custom version, then restores exact files on cancellation", async (t) => {

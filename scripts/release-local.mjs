@@ -142,28 +142,6 @@ function printSummary(log, unit, previousVersion, version, account, artifact) {
   log(lines.join("\n"));
 }
 
-function errorDetails(error) {
-  return [error?.message, error?.stderr]
-    .filter((value) => typeof value === "string")
-    .join("\n");
-}
-
-function requiresOtp(error) {
-  return /\bEOTP\b|one-time password/iu.test(errorDetails(error));
-}
-
-function requiresTrustedPublishCredential(error) {
-  return /two-factor authentication or granular access token with bypass 2fa enabled is required/iu.test(
-    errorDetails(error),
-  );
-}
-
-async function requestOtp(ask) {
-  const otp = (await ask("npm 要求二次验证，请输入 6 位 OTP："))?.trim();
-  if (!/^\d{6}$/u.test(otp)) throw new Error("npm OTP must be exactly 6 digits");
-  return otp;
-}
-
 async function restoreSnapshots(snapshots) {
   const failures = [];
   for (const [file, contents] of snapshots) {
@@ -281,31 +259,9 @@ export async function releaseLocal(argv = [], options = {}) {
 
       publishStarted = true;
       try {
-        await publishArtifact(artifact.file, { root, env, runner });
+        await publishArtifact(artifact.file, { root, env, runner, interactive: true });
         return releaseIdentity(unit, version, artifact, "published");
       } catch (publishError) {
-        if (requiresOtp(publishError)) {
-          const otp = await requestOtp(ask);
-          try {
-            await publishArtifact(artifact.file, { root, env, runner, otp });
-            return releaseIdentity(unit, version, artifact, "published");
-          } catch (retryError) {
-            if (requiresOtp(retryError)) {
-              throw new Error(
-                "npm OTP 无效或已过期，0.1.1 尚未发布；请使用身份验证器当前显示的新验证码重新运行发布。版本文件已保留。",
-                { cause: retryError },
-              );
-            }
-            publishError = retryError;
-          }
-        }
-        if (requiresTrustedPublishCredential(publishError)) {
-          throw new Error(
-            "npm 拒绝发布：该包尚未创建时，Bypass 2FA granular access token 不能完成首次发布。" +
-            "请先为 npm 账号启用 2FA，再重新运行本命令并输入身份验证器生成的 OTP。版本文件已保留。",
-            { cause: publishError },
-          );
-        }
         const verification = await confirmPublishedAfterError({
           lookup,
           name: unit.manifest.name,
