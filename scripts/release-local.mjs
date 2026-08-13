@@ -290,6 +290,12 @@ export async function releaseLocal(argv = [], options = {}) {
             await publishArtifact(artifact.file, { root, env, runner, otp });
             return releaseIdentity(unit, version, artifact, "published");
           } catch (retryError) {
+            if (requiresOtp(retryError)) {
+              throw new Error(
+                "npm OTP 无效或已过期，0.1.1 尚未发布；请使用身份验证器当前显示的新验证码重新运行发布。版本文件已保留。",
+                { cause: retryError },
+              );
+            }
             publishError = retryError;
           }
         }
