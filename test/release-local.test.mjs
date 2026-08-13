@@ -110,6 +110,9 @@ async function state(options = {}) {
         result.publishCalls.push(file);
         result.publishOptions.push(publishOptions);
         if (options.requireOtp && publishOptions.otp === undefined) {
+          throw new Error("EOTP: This operation requires a one-time password");
+        }
+        if (options.requireTrustedCredential) {
           throw new Error("Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages");
         }
         if (options.failAt === "publish") throw new Error("publish failed");
@@ -369,6 +372,21 @@ test("retries npm publish with an interactive OTP when the registry requires 2FA
   assert.equal(current.publishCalls.length, 2);
   assert.equal(current.publishOptions[0].otp, undefined);
   assert.equal(current.publishOptions[1].otp, "123456");
+});
+
+test("does not request an OTP for the granular-token publishing policy error", async (t) => {
+  const current = await state({
+    answers: ["y"],
+    requireTrustedCredential: true,
+  });
+  t.after(current.cleanup);
+
+  await assert.rejects(
+    () => localRelease(["notify", "0.1.1"], current.options),
+    /必须启用账号 2FA.*Bypass 2FA.*不是 OTP 请求/us,
+  );
+  assert.deepEqual(current.questions, ["Publish now? [y/N] "]);
+  assert.equal(current.publishCalls.length, 1);
 });
 
 test("selects root and a custom version, then restores exact files on cancellation", async (t) => {

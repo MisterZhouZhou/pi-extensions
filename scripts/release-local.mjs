@@ -142,11 +142,20 @@ function printSummary(log, unit, previousVersion, version, account, artifact) {
   log(lines.join("\n"));
 }
 
-function requiresOtp(error) {
-  const details = [error?.message, error?.stderr]
+function errorDetails(error) {
+  return [error?.message, error?.stderr]
     .filter((value) => typeof value === "string")
     .join("\n");
-  return /EOTP|one-time password|two-factor authentication.*required|bypass 2fa/iu.test(details);
+}
+
+function requiresOtp(error) {
+  return /\bEOTP\b|one-time password/iu.test(errorDetails(error));
+}
+
+function requiresTrustedPublishCredential(error) {
+  return /two-factor authentication or granular access token with bypass 2fa enabled is required/iu.test(
+    errorDetails(error),
+  );
 }
 
 async function requestOtp(ask) {
@@ -283,6 +292,13 @@ export async function releaseLocal(argv = [], options = {}) {
           } catch (retryError) {
             publishError = retryError;
           }
+        }
+        if (requiresTrustedPublishCredential(publishError)) {
+          throw new Error(
+            "npm 拒绝发布：发布凭据必须启用账号 2FA，或使用开启 Bypass 2FA 的 granular access token；" +
+            "当前错误不是 OTP 请求，未启用 2FA 的账号没有可输入的验证码。版本文件已保留。",
+            { cause: publishError },
+          );
         }
         const verification = await confirmPublishedAfterError({
           lookup,
