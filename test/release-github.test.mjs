@@ -13,16 +13,16 @@ function releaseUnit(selector, root, version = "0.1.0") {
     tagPrefix: workspace ? "pi-notify" : "pi-extensions",
     root: workspace ? path.join(root, "packages/notify") : root,
     manifestPath: workspace ? path.join(root, "packages/notify/package.json") : path.join(root, "package.json"),
-    manifest: { name: workspace ? "@misterzhouzhou/pi-notify" : "@misterzhouzhou/pi-extensions", version },
+    manifest: { name: workspace ? "@misterzhou/pi-notify" : "@misterzhou/pi-extensions", version },
     workspace,
   };
 }
 
 async function state({ answers = ["0.1.1", "y"], dirty = "", head = "abc", remoteHead = "abc", fail = "" } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "pi-github-release-"));
-  await writeFile(path.join(root, "package.json"), '{"name":"@misterzhouzhou/pi-extensions","version":"0.1.0"}\n');
+  await writeFile(path.join(root, "package.json"), '{"name":"@misterzhou/pi-extensions","version":"0.1.0"}\n');
   await writeFile(path.join(root, "package-lock.json"), '{"version":"0.1.0"}\n');
-  await writeFile(path.join(root, "notify.json"), '{"name":"@misterzhouzhou/pi-notify","version":"0.1.0"}\n');
+  await writeFile(path.join(root, "notify.json"), '{"name":"@misterzhou/pi-notify","version":"0.1.0"}\n');
   const rootUnit = releaseUnit("root", root);
   const notifyUnit = { ...releaseUnit("notify", root), manifestPath: path.join(root, "notify.json") };
   const units = [notifyUnit, rootUnit];

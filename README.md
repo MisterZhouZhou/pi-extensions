@@ -7,23 +7,23 @@
 整体安装（当前包含 Notify）：
 
 ```bash
-pi install npm:@misterzhouzhou/pi-extensions
+pi install npm:@misterzhou/pi-extensions
 ```
 
 仅安装 Notify：
 
 ```bash
-pi install npm:@misterzhouzhou/pi-notify
+pi install npm:@misterzhou/pi-notify
 ```
 
-> 不要同时安装 `@misterzhouzhou/pi-extensions` 和 `@misterzhouzhou/pi-notify`，否则 Notify 可能被重复加载。切换安装方式前请先用 `pi uninstall npm:<包名>` 卸载原包。
+> 不要同时安装 `@misterzhou/pi-extensions` 和 `@misterzhou/pi-notify`，否则 Notify 可能被重复加载。切换安装方式前请先用 `pi uninstall npm:<包名>` 卸载原包。
 
 ## Packages
 
 | Package | 目录 | 用途 |
 |---|---|---|
-| `@misterzhouzhou/pi-extensions` | 仓库根目录 | 聚合安装仓库内全部扩展 |
-| `@misterzhouzhou/pi-notify` | [`packages/notify`](packages/notify) | macOS 回复完成通知 |
+| `@misterzhou/pi-extensions` | 仓库根目录 | 聚合安装仓库内全部扩展 |
+| `@misterzhou/pi-notify` | [`packages/notify`](packages/notify) | macOS 回复完成通知 |
 
 ## 本地开发与验证
 
@@ -33,7 +33,7 @@ pi install npm:@misterzhouzhou/pi-notify
 npm install
 npm run check
 npm pack --dry-run --json
-npm pack --workspace @misterzhouzhou/pi-notify --dry-run --json
+npm pack --workspace @misterzhou/pi-notify --dry-run --json
 ```
 
 临时加载 Notify，不写入 Pi 安装配置：
@@ -44,7 +44,7 @@ pi -e ./packages/notify
 
 ## 发布流程
 
-根聚合包 `@misterzhouzhou/pi-extensions` 与独立包 `@misterzhouzhou/pi-notify` 分别维护版本。发布相关命令分为四个职责明确的入口。
+根聚合包 `@misterzhou/pi-extensions` 与独立包 `@misterzhou/pi-notify` 分别维护版本。发布相关命令分为四个职责明确的入口。
 
 ### 1. 检查当前发布状态：`release-check`
 

@@ -77,8 +77,8 @@ async function validatePackage(root, packageDirectory, errors) {
   const manifest = await readJson(path.join(packageDirectory, "package.json"), root, errors);
   if (!manifest) return;
 
-  if (typeof manifest.name !== "string" || !/^@misterzhouzhou\/pi-[a-z0-9][a-z0-9-]*$/u.test(manifest.name)) {
-    errors.push(`${label}: name must match @misterzhouzhou/pi-*`);
+  if (typeof manifest.name !== "string" || !/^@misterzhou\/pi-[a-z0-9][a-z0-9-]*$/u.test(manifest.name)) {
+    errors.push(`${label}: name must match @misterzhou/pi-*`);
   }
   if (!Array.isArray(manifest.keywords) || !manifest.keywords.includes("pi-package")) {
     errors.push(`${label}: keywords must include keyword pi-package`);
@@ -157,8 +157,8 @@ async function validatePackage(root, packageDirectory, errors) {
 
 async function validateUmbrellaPackage(root, manifest, errors) {
   const label = "package.json";
-  if (manifest.name !== "@misterzhouzhou/pi-extensions") {
-    errors.push(`${label}: root name must be @misterzhouzhou/pi-extensions`);
+  if (manifest.name !== "@misterzhou/pi-extensions") {
+    errors.push(`${label}: root name must be @misterzhou/pi-extensions`);
   }
   if (manifest.private === true) errors.push(`${label}: umbrella package must be public`);
   if (!Array.isArray(manifest.keywords) || !manifest.keywords.includes("pi-package")) {

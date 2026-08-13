@@ -43,8 +43,8 @@ test("release-check reports manifest versions independently without changing the
   });
 
   assert.deepEqual(result.packages, [
-    { selector: "notify", name: "@misterzhouzhou/pi-notify", version: "7.8.9", status: "published" },
-    { selector: "root", name: "@misterzhouzhou/pi-extensions", version: "2.3.4", status: "pending" },
+    { selector: "notify", name: "@misterzhou/pi-notify", version: "7.8.9", status: "published" },
+    { selector: "root", name: "@misterzhou/pi-extensions", version: "2.3.4", status: "pending" },
   ]);
   assert.equal(result.checked, true);
   assert.deepEqual(calls, []);

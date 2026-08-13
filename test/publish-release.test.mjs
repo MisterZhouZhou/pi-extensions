@@ -10,7 +10,7 @@ function unit(selector = "notify", version = "0.2.0") {
     root: selector === "root" ? "/repo" : "/repo/packages/notify",
     manifestPath: selector === "root" ? "/repo/package.json" : "/repo/packages/notify/package.json",
     manifest: {
-      name: selector === "root" ? "@misterzhouzhou/pi-extensions" : "@misterzhouzhou/pi-notify",
+      name: selector === "root" ? "@misterzhou/pi-extensions" : "@misterzhou/pi-notify",
       version,
       files: selector === "root" ? ["packages/notify", "README.md", "LICENSE"] : ["index.ts"],
     },

@@ -19,7 +19,7 @@ function unit(selector = "notify", version = "0.1.0", root = "/repo") {
     root: selector === "root" ? root : path.join(root, "packages/notify"),
     manifestPath: selector === "root" ? path.join(root, "package.json") : path.join(root, "packages/notify/package.json"),
     manifest: {
-      name: selector === "root" ? "@misterzhouzhou/pi-extensions" : "@misterzhouzhou/pi-notify",
+      name: selector === "root" ? "@misterzhou/pi-extensions" : "@misterzhou/pi-notify",
       version,
       files: selector === "root" ? ["packages/notify", "README.md", "LICENSE"] : ["index.ts"],
     },
@@ -34,13 +34,13 @@ async function fixture() {
   const notifyManifestPath = path.join(root, "packages/notify/package.json");
   const lockfilePath = path.join(root, "package-lock.json");
   await writeFile(rootManifestPath, `${JSON.stringify({
-    name: "@misterzhouzhou/pi-extensions",
+    name: "@misterzhou/pi-extensions",
     version: "0.1.0",
     files: ["packages/notify", "README.md", "LICENSE"],
     workspaces: ["packages/*"],
   }, null, 2)}\n`);
   await writeFile(notifyManifestPath, `${JSON.stringify({
-    name: "@misterzhouzhou/pi-notify",
+    name: "@misterzhou/pi-notify",
     version: "0.1.0",
     files: ["index.ts"],
   }, null, 2)}\n`);
@@ -278,7 +278,7 @@ test("allows an explicit current version to resume an unpublished release", asyn
   assert.equal(result.version, "0.1.0");
   assert.deepEqual(
     current.calls.find(({ operation }) => operation === "registry").args,
-    ["@misterzhouzhou/pi-notify", "0.1.0"],
+    ["@misterzhou/pi-notify", "0.1.0"],
   );
 });
 
@@ -321,7 +321,7 @@ test("checks, summarizes, and publishes the same prepared artifact", async (t) =
   assert.deepEqual(current.calls.map(({ operation }) => operation), [
     "git-status", "install", "run", "pack", "registry", "whoami", "publish",
   ]);
-  assert.match(current.summaries[0], /@misterzhouzhou\/pi-notify/u);
+  assert.match(current.summaries[0], /@misterzhou\/pi-notify/u);
   assert.match(current.summaries[0], /0\.1\.0 -> 0\.1\.1/u);
   assert.match(current.summaries[0], /MisterZhouZhou/u);
   assert.match(current.summaries[0], /checked\.tgz/u);
@@ -336,7 +336,7 @@ test("publishes a package-level patch selected from the version menu", async (t)
   assert.deepEqual(result, {
     action: "published",
     selector: "notify",
-    package: "@misterzhouzhou/pi-notify",
+    package: "@misterzhou/pi-notify",
     version: "0.1.1",
     integrity: "sha512-checked",
   });
@@ -350,7 +350,7 @@ test("publishes a package-level patch selected from the version menu", async (t)
   assert.equal(packedUnit.manifest.version, "0.1.1");
   assert.deepEqual(
     current.calls.find(({ operation }) => operation === "registry").args,
-    ["@misterzhouzhou/pi-notify", "0.1.1"],
+    ["@misterzhou/pi-notify", "0.1.1"],
   );
   assert.equal(current.publishCalls.length, 1);
 });
@@ -381,7 +381,7 @@ test("selects root and a custom version, then restores exact files on cancellati
   assert.deepEqual(result, {
     action: "cancelled",
     selector: "root",
-    package: "@misterzhouzhou/pi-extensions",
+    package: "@misterzhou/pi-extensions",
     version: "0.2.0",
   });
   assert.match(current.questions[0], /请选择发布包/u);

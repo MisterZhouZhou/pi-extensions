@@ -20,8 +20,8 @@ test("discovers independently versioned release units", async () => {
   assert.deepEqual(
     (await releaseUnits(repoRoot)).map(({ selector, manifest }) => [selector, manifest.name]),
     [
-      ["notify", "@misterzhouzhou/pi-notify"],
-      ["root", "@misterzhouzhou/pi-extensions"],
+      ["notify", "@misterzhou/pi-notify"],
+      ["root", "@misterzhou/pi-extensions"],
     ],
   );
   assert.equal((await releaseUnit("notify", repoRoot)).tagPrefix, "pi-notify");

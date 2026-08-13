@@ -1,12 +1,12 @@
-# @misterzhouzhou/pi-notify
+# @misterzhou/pi-notify
 
-Pi 的 macOS 桌面通知扩展，可独立安装，也包含在 `@misterzhouzhou/pi-extensions` 聚合包中。
+Pi 的 macOS 桌面通知扩展，可独立安装，也包含在 `@misterzhou/pi-extensions` 聚合包中。
 
 ```bash
-pi install npm:@misterzhouzhou/pi-notify
+pi install npm:@misterzhou/pi-notify
 ```
 
-不要同时安装本包和 `@misterzhouzhou/pi-extensions`，否则 Notify 可能被重复加载。
+不要同时安装本包和 `@misterzhou/pi-extensions`，否则 Notify 可能被重复加载。
 
 ## 行为
 

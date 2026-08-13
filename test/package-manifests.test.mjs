@@ -12,7 +12,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 async function fixture({ root = {}, packageJson = {}, files = {}, omit = [] } = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "pi-package-policy-"));
   const rootManifest = {
-    name: "@misterzhouzhou/pi-extensions",
+    name: "@misterzhou/pi-extensions",
     version: "0.1.0",
     keywords: ["pi-package"],
     files: ["packages/demo", "README.md", "LICENSE"],
@@ -24,7 +24,7 @@ async function fixture({ root = {}, packageJson = {}, files = {}, omit = [] } = 
     ...root,
   };
   const manifest = {
-    name: "@misterzhouzhou/pi-demo",
+    name: "@misterzhou/pi-demo",
     keywords: ["pi-package"],
     repository: {
       type: "git",
@@ -99,7 +99,7 @@ test("enforces package naming, keywords, and repository directory", async () => 
       repository: { directory: "packages/wrong" },
     },
   });
-  hasError(errors, "name must match @misterzhouzhou/pi-*");
+  hasError(errors, "name must match @misterzhou/pi-*");
   hasError(errors, "keyword pi-package");
   hasError(errors, "repository.directory must be packages/demo");
 });

@@ -27,4 +27,4 @@ jobs:
       - name: Inspect umbrella package
         run: npm pack --dry-run --json
       - name: Inspect notify package
-        run: npm pack --workspace @misterzhouzhou/pi-notify --dry-run --json
+        run: npm pack --workspace @misterzhou/pi-notify --dry-run --json
