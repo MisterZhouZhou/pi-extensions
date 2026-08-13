@@ -383,7 +383,7 @@ test("does not request an OTP for the granular-token publishing policy error", a
 
   await assert.rejects(
     () => localRelease(["notify", "0.1.1"], current.options),
-    /必须启用账号 2FA.*Bypass 2FA.*不是 OTP 请求/us,
+    /尚未创建.*Bypass 2FA.*首次发布.*启用 2FA/us,
   );
   assert.deepEqual(current.questions, ["Publish now? [y/N] "]);
   assert.equal(current.publishCalls.length, 1);

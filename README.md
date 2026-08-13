@@ -73,7 +73,7 @@ npm run release-local -- root 0.1.1
 
 `release-local` 会修改所选包版本、同步 lockfile、运行检查和打包、查询 npm，并使用本机已有的 `npm login` 身份发布。publish 开始前取消或失败会逐字节恢复版本文件；publish 开始后不会自动回滚。该命令不会 commit、tag 或 push。
 
-若 npm 明确返回 `EOTP`，命令会提示输入 6 位 OTP 并自动重试。错误包含 `Two-factor authentication or granular access token with bypass 2fa enabled is required` 时不是 OTP 请求：需要先开启 npm 账号 2FA，或改用开启 `Bypass 2FA` 的 granular access token。若 publish 状态未知且 npm 确认版本不存在，先提交脚本保留的版本文件，再显式传入当前版本恢复发布，例如 `npm run release-local -- notify 0.1.1`；不要选择新的 patch 版本。
+若 npm 明确返回 `EOTP`，命令会提示输入 6 位 OTP 并自动重试。首次发布同时会创建 npm 包；npm 已禁止 `Bypass 2FA` granular access token 执行这类包管理操作，因此第一个版本必须先为 npm 账号启用 2FA，再通过身份验证器 OTP 发布。包创建后，后续自动发布应优先使用 GitHub Trusted Publishing。若 publish 状态未知且 npm 确认版本不存在，先提交脚本保留的版本文件，再显式传入当前版本恢复发布，例如 `npm run release-local -- notify 0.1.1`；不要选择新的 patch 版本。
 
 ### 3. 通过 GitHub Actions 发布：`release-github`
 

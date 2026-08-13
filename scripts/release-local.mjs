@@ -295,8 +295,8 @@ export async function releaseLocal(argv = [], options = {}) {
         }
         if (requiresTrustedPublishCredential(publishError)) {
           throw new Error(
-            "npm 拒绝发布：发布凭据必须启用账号 2FA，或使用开启 Bypass 2FA 的 granular access token；" +
-            "当前错误不是 OTP 请求，未启用 2FA 的账号没有可输入的验证码。版本文件已保留。",
+            "npm 拒绝发布：该包尚未创建时，Bypass 2FA granular access token 不能完成首次发布。" +
+            "请先为 npm 账号启用 2FA，再重新运行本命令并输入身份验证器生成的 OTP。版本文件已保留。",
             { cause: publishError },
           );
         }
