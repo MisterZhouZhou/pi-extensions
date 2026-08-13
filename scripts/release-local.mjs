@@ -19,7 +19,7 @@ import {
 
 const PUBLISH_CHECK_ATTEMPTS = 5;
 const PUBLISH_CHECK_DELAY_MS = 2_000;
-const USAGE = "usage: npm run release-local [-- <root|notify> <X.Y.Z>]";
+const USAGE = "usage: npm run release-local [-- <root|notify> [X.Y.Z]]";
 
 function interactiveTerminal(input = process.stdin, output = process.stdout) {
   return input.isTTY === true && output.isTTY === true;
@@ -31,26 +31,66 @@ function validateSelector(selector) {
   }
 }
 
-export async function resolveReleaseInput(argv = [], options = {}) {
+export function incrementStableVersion(currentVersion, releaseType) {
+  if (!stableVersion(currentVersion)) {
+    throw new Error(`current version must be a stable X.Y.Z version: ${currentVersion}`);
+  }
+  if (!["patch", "minor", "major"].includes(releaseType)) {
+    throw new Error("release type must be patch, minor, or major");
+  }
+  const [major, minor, patch] = currentVersion.split(".").map(BigInt);
+  if (releaseType === "patch") return `${major}.${minor}.${patch + 1n}`;
+  if (releaseType === "minor") return `${major}.${minor + 1n}.0`;
+  return `${major + 1n}.0.0`;
+}
+
+export async function resolveReleaseSelector(argv = [], options = {}) {
   const interactive = options.interactive ?? interactiveTerminal(options.input, options.output);
   if (!interactive) throw new Error("local release requires an interactive terminal");
-  if (argv.length !== 0 && argv.length !== 2) throw new Error(USAGE);
+  if (argv.length > 2) throw new Error(USAGE);
 
-  let selector;
-  let version;
+  let selector = argv[0];
+  let explicitVersion = argv[1];
   if (argv.length === 2) {
-    [selector, version] = argv;
+    selector = selector?.trim();
+    explicitVersion = explicitVersion?.trim();
+  } else if (argv.length === 1) {
+    selector = selector?.trim();
   } else {
     if (typeof options.ask !== "function") throw new Error("interactive release input is unavailable");
-    selector = await options.ask("Release unit (root/notify): ");
-    version = await options.ask("New version: ");
+    selector = (await options.ask("请选择发布包：\n1) notify\n2) root\n请输入选择 (1/2): "))?.trim();
+    if (selector === "1") selector = "notify";
+    if (selector === "2") selector = "root";
   }
 
-  selector = selector?.trim();
-  version = version?.trim();
+  if (argv.length === 0 && selector !== "notify" && selector !== "root") {
+    throw new Error("invalid package selection; expected 1, 2, notify, or root");
+  }
   validateSelector(selector);
-  if (!version) throw new Error(USAGE);
-  return { selector, version };
+  return { selector, explicitVersion };
+}
+
+export async function resolveTargetVersion(currentVersion, explicitVersion, options = {}) {
+  if (explicitVersion !== undefined) return explicitVersion.trim();
+  if (typeof options.ask !== "function") throw new Error("interactive release input is unavailable");
+
+  const patch = incrementStableVersion(currentVersion, "patch");
+  const minor = incrementStableVersion(currentVersion, "minor");
+  const major = incrementStableVersion(currentVersion, "major");
+  const selection = (await options.ask(
+    `当前版本：${currentVersion}\n` +
+    "请选择版本更新类型：\n" +
+    `1) patch：${currentVersion} -> ${patch}\n` +
+    `2) minor：${currentVersion} -> ${minor}\n` +
+    `3) major：${currentVersion} -> ${major}\n` +
+    "4) 输入自定义版本号\n" +
+    "请输入选择 (1/2/3/4): ",
+  ))?.trim();
+  if (selection === "1") return patch;
+  if (selection === "2") return minor;
+  if (selection === "3") return major;
+  if (selection === "4") return (await options.ask("请输入自定义版本号："))?.trim();
+  throw new Error("invalid version selection; expected 1, 2, 3, or 4");
 }
 
 export function releasePaths(unit) {
@@ -134,7 +174,7 @@ export async function releaseLocal(argv = [], options = {}) {
   const ask = options.ask;
   const log = options.log ?? console.log;
   const warn = options.warn ?? console.warn;
-  const input = await resolveReleaseInput(argv, {
+  const selectorInput = await resolveReleaseSelector(argv, {
     interactive: options.interactive,
     input: options.input,
     output: options.output,
@@ -142,15 +182,16 @@ export async function releaseLocal(argv = [], options = {}) {
   });
 
   const getUnit = options.releaseUnit ?? releaseUnit;
-  const unit = await getUnit(input.selector, root);
+  const unit = await getUnit(selectorInput.selector, root);
+  const version = await resolveTargetVersion(unit.manifest.version, selectorInput.explicitVersion, { ask });
   const previousVersion = unit.manifest.version;
   if (!stableVersion(previousVersion)) {
     throw new Error(`${unit.manifest.name} has invalid stable version: ${previousVersion}`);
   }
-  if (!stableVersion(input.version)) {
-    throw new Error(`new version must be a stable X.Y.Z version: ${input.version}`);
+  if (!stableVersion(version)) {
+    throw new Error(`new version must be a stable X.Y.Z version: ${version}`);
   }
-  if (compareStableVersions(input.version, previousVersion) !== 1) {
+  if (compareStableVersions(version, previousVersion) !== 1) {
     throw new Error(`new version must be greater than current version ${previousVersion}`);
   }
   if (env.NPM_TOKEN || env.NODE_AUTH_TOKEN) {
@@ -179,7 +220,7 @@ export async function releaseLocal(argv = [], options = {}) {
 
   try {
     const manifest = JSON.parse(snapshots.get(unit.manifestPath).toString("utf8"));
-    manifest.version = input.version;
+    manifest.version = version;
     await writeFile(unit.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     await runner(
       "npm",
@@ -188,7 +229,7 @@ export async function releaseLocal(argv = [], options = {}) {
     );
     await runner("npm", ["run", "check"], { cwd: root, env });
 
-    const preparedUnit = updatedUnit(unit, input.version);
+    const preparedUnit = updatedUnit(unit, version);
     const packer = options.pack ?? pack;
     const lookup = options.registryVersion ?? registryVersion;
     const authenticate = options.npmWhoami ?? npmWhoami;
@@ -197,11 +238,11 @@ export async function releaseLocal(argv = [], options = {}) {
 
     return await withTempDirectory("pi-local-release-", async (directory) => {
       const artifact = await packer(preparedUnit, directory, runner);
-      if (await lookup(unit.manifest.name, input.version)) {
-        throw new Error(`${unit.manifest.name}@${input.version} is already published`);
+      if (await lookup(unit.manifest.name, version)) {
+        throw new Error(`${unit.manifest.name}@${version} is already published`);
       }
       const account = await authenticate({ root, env, runner });
-      printSummary(log, unit, previousVersion, input.version, account, artifact);
+      printSummary(log, unit, previousVersion, version, account, artifact);
       if (typeof ask !== "function") throw new Error("interactive release confirmation is unavailable");
       const answer = await ask("Publish now? [y/N] ");
       if (answer.trim().toLowerCase() !== "y") {
@@ -210,24 +251,24 @@ export async function releaseLocal(argv = [], options = {}) {
           action: "cancelled",
           selector: unit.selector,
           package: unit.manifest.name,
-          version: input.version,
+          version,
         };
       }
 
       publishStarted = true;
       try {
         await publishArtifact(artifact.file, { root, env, runner });
-        return releaseIdentity(unit, input.version, artifact, "published");
+        return releaseIdentity(unit, version, artifact, "published");
       } catch (publishError) {
         const verification = await confirmPublishedAfterError({
           lookup,
           name: unit.manifest.name,
-          version: input.version,
+          version,
           sleep,
         });
         if (verification === true) {
           warn("npm publish returned an error, but the version is present in the registry.");
-          return releaseIdentity(unit, input.version, artifact, "published-after-client-error");
+          return releaseIdentity(unit, version, artifact, "published-after-client-error");
         }
         const error = new Error(
           "publish status is unknown; version files were kept; check npm before retrying and do not retry blindly",

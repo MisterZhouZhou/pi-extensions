@@ -4,7 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { localRelease, releasePaths, resolveReleaseInput } from "../scripts/release-local.mjs";
+import {
+  incrementStableVersion,
+  localRelease,
+  releasePaths,
+  resolveReleaseSelector,
+  resolveTargetVersion,
+} from "../scripts/release-local.mjs";
 
 function unit(selector = "notify", version = "0.1.0", root = "/repo") {
   return {
@@ -51,6 +57,7 @@ async function fixture() {
 async function state(options = {}) {
   const files = await fixture();
   const calls = [];
+  const questions = [];
   const answers = options.answers ? [...options.answers] : ["y"];
   const run = async (command, args) => {
     calls.push({ operation: command === "git" ? "git-status" : args[0], command, args });
@@ -64,6 +71,7 @@ async function state(options = {}) {
   const result = {
     ...files,
     calls,
+    questions,
     publishCalls: [],
     summaries: [],
     warnings: [],
@@ -71,7 +79,10 @@ async function state(options = {}) {
       root: files.root,
       env: {},
       interactive: true,
-      ask: async () => answers.shift() ?? "",
+      ask: async (question) => {
+        questions.push(question);
+        return answers.shift() ?? "";
+      },
       run,
       pack: async (releaseUnit, directory) => {
         calls.push({ operation: "pack", releaseUnit, directory });
@@ -120,19 +131,79 @@ async function assertRestored(current, original, selector = "notify") {
   assert.deepEqual(current.publishCalls, []);
 }
 
-test("accepts complete arguments, prompts for missing values, and rejects unsafe usage", async () => {
-  assert.deepEqual(
-    await resolveReleaseInput(["notify", "0.1.1"], { interactive: true, ask: async () => assert.fail() }),
-    { selector: "notify", version: "0.1.1" },
+test("increments stable versions without numeric precision loss", () => {
+  assert.equal(incrementStableVersion("1.2.3", "patch"), "1.2.4");
+  assert.equal(incrementStableVersion("1.2.3", "minor"), "1.3.0");
+  assert.equal(incrementStableVersion("1.2.3", "major"), "2.0.0");
+  assert.equal(
+    incrementStableVersion("9007199254740993.2.3", "patch"),
+    "9007199254740993.2.4",
   );
-  const answers = ["notify", "0.1.1"];
-  assert.deepEqual(await resolveReleaseInput([], { interactive: true, ask: async () => answers.shift() }), {
-    selector: "notify",
-    version: "0.1.1",
+  assert.throws(() => incrementStableVersion("1.2.3-beta.1", "patch"), /stable X\.Y\.Z/u);
+  assert.throws(() => incrementStableVersion("1.2.3", "other"), /patch, minor, or major/u);
+});
+
+test("parses explicit and menu release selectors and rejects unsafe usage", async () => {
+  assert.deepEqual(
+    await resolveReleaseSelector(["notify", "0.1.1"], { interactive: true, ask: async () => assert.fail() }),
+    { selector: "notify", explicitVersion: "0.1.1" },
+  );
+  assert.deepEqual(await resolveReleaseSelector(["root"], { interactive: true }), {
+    selector: "root",
+    explicitVersion: undefined,
   });
-  await assert.rejects(() => resolveReleaseInput(["missing", "0.1.1"], { interactive: true }), /root or notify/u);
-  await assert.rejects(() => resolveReleaseInput(["notify"], { interactive: true }), /usage/u);
-  await assert.rejects(() => resolveReleaseInput(["notify", "0.1.1"], { interactive: false }), /interactive terminal/u);
+  const answers = ["1"];
+  const questions = [];
+  assert.deepEqual(await resolveReleaseSelector([], {
+    interactive: true,
+    ask: async (question) => { questions.push(question); return answers.shift(); },
+  }), {
+    selector: "notify",
+    explicitVersion: undefined,
+  });
+  assert.match(questions[0], /1\) notify[\s\S]*2\) root[\s\S]*请输入选择 \(1\/2\)/u);
+  for (const [answer, selector] of [["2", "root"], ["notify", "notify"], ["root", "root"]]) {
+    assert.deepEqual(await resolveReleaseSelector([], {
+      interactive: true,
+      ask: async () => answer,
+    }), {
+      selector,
+      explicitVersion: undefined,
+    });
+  }
+  await assert.rejects(
+    () => resolveReleaseSelector([], { interactive: true, ask: async () => "missing" }),
+    /invalid package selection/u,
+  );
+  await assert.rejects(() => resolveReleaseSelector(["missing", "0.1.1"], { interactive: true }), /root or notify/u);
+  await assert.rejects(() => resolveReleaseSelector(["notify", "0.1.1", "extra"], { interactive: true }), /usage/u);
+  await assert.rejects(() => resolveReleaseSelector(["notify", "0.1.1"], { interactive: false }), /interactive terminal/u);
+});
+
+test("resolves automatic and custom target versions while explicit versions skip menus", async () => {
+  const expected = new Map([["1", "0.1.1"], ["2", "0.2.0"], ["3", "1.0.0"]]);
+  for (const [answer, version] of expected) {
+    const questions = [];
+    assert.equal(await resolveTargetVersion("0.1.0", undefined, {
+      ask: async (question) => { questions.push(question); return answer; },
+    }), version);
+    assert.match(questions[0], /当前版本：0\.1\.0/u);
+    assert.match(questions[0], /1\) patch：0\.1\.0 -> 0\.1\.1/u);
+    assert.match(questions[0], /2\) minor：0\.1\.0 -> 0\.2\.0/u);
+    assert.match(questions[0], /3\) major：0\.1\.0 -> 1\.0\.0/u);
+    assert.match(questions[0], /4\) 输入自定义版本号/u);
+  }
+  const customAnswers = ["4", "0.3.0"];
+  assert.equal(await resolveTargetVersion("0.1.0", undefined, {
+    ask: async () => customAnswers.shift(),
+  }), "0.3.0");
+  assert.equal(await resolveTargetVersion("0.1.0", "0.4.0", {
+    ask: async () => assert.fail("explicit version must skip the menu"),
+  }), "0.4.0");
+  await assert.rejects(
+    () => resolveTargetVersion("0.1.0", undefined, { ask: async () => "5" }),
+    /invalid version selection/u,
+  );
 });
 
 test("scopes preflight paths to the selected release unit", () => {
@@ -161,6 +232,15 @@ test("rejects invalid versions, local tokens, and dirty release paths before wri
     t.after(current.cleanup);
     const original = await snapshots(current);
     await assert.rejects(() => localRelease(["notify", version], current.options), /stable|greater/u);
+    await assertRestored(current, original);
+    assert.deepEqual(current.calls, []);
+  }
+
+  for (const version of ["0.1.0", "0.1.1-beta.1"]) {
+    const current = await state({ answers: ["4", version] });
+    t.after(current.cleanup);
+    const original = await snapshots(current);
+    await assert.rejects(() => localRelease(["notify"], current.options), /stable|greater/u);
     await assertRestored(current, original);
     assert.deepEqual(current.calls, []);
   }
@@ -226,6 +306,66 @@ test("checks, summarizes, and publishes the same prepared artifact", async (t) =
   assert.match(current.summaries[0], /0\.1\.0 -> 0\.1\.1/u);
   assert.match(current.summaries[0], /MisterZhouZhou/u);
   assert.match(current.summaries[0], /checked\.tgz/u);
+});
+
+test("publishes a package-level patch selected from the version menu", async (t) => {
+  const current = await state({ answers: ["1", "y"] });
+  t.after(current.cleanup);
+  const rootBefore = await readFile(current.rootManifestPath);
+  const result = await localRelease(["notify"], current.options);
+
+  assert.deepEqual(result, {
+    action: "published",
+    selector: "notify",
+    package: "@misterzhouzhou/pi-notify",
+    version: "0.1.1",
+    integrity: "sha512-checked",
+  });
+  assert.match(current.questions[0], /请选择版本更新类型/u);
+  assert.equal(current.questions.at(-1), "Publish now? [y/N] ");
+  assert.deepEqual(await readFile(current.rootManifestPath), rootBefore);
+  assert.equal(JSON.parse(await readFile(current.notifyManifestPath, "utf8")).version, "0.1.1");
+  assert.equal(JSON.parse(await readFile(current.lockfilePath, "utf8")).syncedVersion, "0.1.1");
+  const packedUnit = current.calls.find(({ operation }) => operation === "pack").releaseUnit;
+  assert.equal(packedUnit.selector, "notify");
+  assert.equal(packedUnit.manifest.version, "0.1.1");
+  assert.deepEqual(
+    current.calls.find(({ operation }) => operation === "registry").args,
+    ["@misterzhouzhou/pi-notify", "0.1.1"],
+  );
+  assert.equal(current.publishCalls.length, 1);
+});
+
+test("selects root and a custom version, then restores exact files on cancellation", async (t) => {
+  const current = await state({ answers: ["2", "4", "0.2.0", "n"] });
+  t.after(current.cleanup);
+  const rootOriginal = await snapshots(current, "root");
+  const notifyBefore = await readFile(current.notifyManifestPath);
+  const result = await localRelease([], current.options);
+
+  assert.deepEqual(result, {
+    action: "cancelled",
+    selector: "root",
+    package: "@misterzhouzhou/pi-extensions",
+    version: "0.2.0",
+  });
+  assert.match(current.questions[0], /请选择发布包/u);
+  assert.match(current.questions[1], /请选择版本更新类型/u);
+  assert.equal(current.questions[2], "请输入自定义版本号：");
+  assert.equal(current.questions[3], "Publish now? [y/N] ");
+  await assertRestored(current, rootOriginal, "root");
+  assert.deepEqual(await readFile(current.notifyManifestPath), notifyBefore);
+});
+
+test("explicit versions skip menus but still require final confirmation", async (t) => {
+  const current = await state({ answers: ["n"] });
+  t.after(current.cleanup);
+  const original = await snapshots(current);
+  const result = await localRelease(["notify", "0.1.1"], current.options);
+
+  assert.equal(result.action, "cancelled");
+  assert.deepEqual(current.questions, ["Publish now? [y/N] "]);
+  await assertRestored(current, original);
 });
 
 test("updates root independently from notify", async (t) => {

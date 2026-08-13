@@ -9,6 +9,7 @@
     "check": "npm run typecheck && npm run validate && npm test",
     "release-check": "node scripts/release-check.mjs",
     "release-local": "node scripts/release-local.mjs",
+    "release-local-notify": "npm run release-local -- notify",
     "release-github": "node scripts/release-github.mjs",
     "publish-release": "node scripts/publish-release.mjs"
   },

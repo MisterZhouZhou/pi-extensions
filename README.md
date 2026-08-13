@@ -57,15 +57,21 @@ npm run release-check
 ### 2. 本机直接发布 npm：`release-local`
 
 ```bash
-# 交互选择 root/notify，并输入目标版本
+# 交互选择发布包和版本更新类型
 npm run release-local
 
-# 指定单包和目标版本
+# 指定包后交互选择版本更新类型
+npm run release-local -- notify
+npm run release-local -- root
+
+# AI/脚本：指定单包和精确目标版本
 npm run release-local -- notify 0.1.1
 npm run release-local -- root 0.1.1
 ```
 
-`release-local` 每次只发布一个包，不支持 `all`。它修改所选包版本、同步 lockfile、运行检查和打包、查询 npm，并使用本机已有的 `npm login` 身份发布。最终摘要后必须输入 `y` 才会执行 `npm publish`。publish 开始前取消或失败会逐字节恢复版本文件；publish 开始后不会自动回滚。该命令不会 commit、tag 或 push。
+不带版本号时，命令会显示 `patch`、`minor`、`major` 和自定义版本号菜单，并根据当前版本显示前三项的目标版本。显式传入版本号会跳过版本菜单，但两种方式都要求交互式终端，并在发布摘要后输入 `y` 确认。每次只发布一个包，不支持 `all`。
+
+`release-local` 会修改所选包版本、同步 lockfile、运行检查和打包、查询 npm，并使用本机已有的 `npm login` 身份发布。publish 开始前取消或失败会逐字节恢复版本文件；publish 开始后不会自动回滚。该命令不会 commit、tag 或 push。
 
 ### 3. 通过 GitHub Actions 发布：`release-github`
 
