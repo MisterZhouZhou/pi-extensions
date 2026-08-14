@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -36,22 +36,15 @@ export async function run(command, args, options = {}) {
 }
 
 export async function runInteractive(command, args, options = {}) {
-  await new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd ?? ROOT,
-      env: options.env ?? process.env,
-      stdio: "inherit",
-    });
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      const reason = signal ? `signal ${signal}` : `exit code ${code}`;
-      reject(new Error(`${command} ${args[0]} failed with ${reason}`));
-    });
+  const result = spawnSync(command, args, {
+    cwd: options.cwd ?? ROOT,
+    env: options.env ?? process.env,
+    stdio: "inherit",
   });
+  if (result.error) throw result.error;
+  if (result.status === 0) return;
+  const reason = result.signal ? `signal ${result.signal}` : `exit code ${result.status}`;
+  throw new Error(`${command} ${args[0]} failed with ${reason}`);
 }
 
 export async function readJson(file) {
