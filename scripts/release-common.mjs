@@ -10,10 +10,6 @@ const execFileAsync = promisify(execFile);
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const REGISTRY = "https://registry.npmjs.org";
 const STABLE_VERSION_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u;
-const TAG_SELECTORS = new Map([
-  ["pi-extensions", "root"],
-  ["pi-notify", "notify"],
-]);
 
 export async function run(command, args, options = {}) {
   try {
@@ -73,7 +69,11 @@ export function parseReleaseTag(tag) {
   const separator = tag.lastIndexOf("@");
   const prefix = tag.slice(0, separator);
   const version = tag.slice(separator + 1);
-  const selector = TAG_SELECTORS.get(prefix);
+  const selector = prefix === "pi-extensions"
+    ? "root"
+    : prefix.startsWith("pi-") && /^[a-z0-9-]+$/u.test(prefix.slice(3))
+      ? prefix.slice(3)
+      : undefined;
   if (!selector) throw new Error(`unsupported release tag: ${tag}`);
   if (!stableVersion(version)) throw new Error(`release tag must use a stable version: ${tag}`);
   return { selector, version };
@@ -108,9 +108,6 @@ export async function releaseUnits(root = ROOT) {
 }
 
 export async function releaseUnit(selector, root = ROOT) {
-  if (selector !== "root" && selector !== "notify") {
-    throw new Error("selector must be root or notify");
-  }
   const unit = (await releaseUnits(root)).find((entry) => entry.selector === selector);
   if (!unit) throw new Error(`release unit does not exist: ${selector}`);
   return unit;

@@ -28,3 +28,7 @@ jobs:
         run: npm pack --dry-run --json
       - name: Inspect notify package
         run: npm pack --workspace @misterzhou/pi-notify --dry-run --json
+      - name: Inspect yolo package
+        run: npm pack --workspace @misterzhou/pi-yolo --dry-run --json
+      - name: Inspect subagent package
+        run: npm pack --workspace @misterzhou/pi-subagent --dry-run --json

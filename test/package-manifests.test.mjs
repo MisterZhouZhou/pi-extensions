@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -82,6 +82,24 @@ function hasError(errors, fragment) {
 
 test("repository package manifests satisfy Pi package policy", async () => {
   assert.deepEqual(await validateRepository(repoRoot), []);
+});
+
+test("umbrella and standalone manifests enumerate all three extensions", async () => {
+  const root = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+  assert.deepEqual(root.pi.extensions, [
+    "./packages/notify/index.ts",
+    "./packages/yolo/index.ts",
+    "./packages/subagent/index.ts",
+  ]);
+  assert.ok(root.files.includes("packages/notify"));
+  assert.ok(root.files.includes("packages/yolo"));
+  assert.ok(root.files.includes("packages/subagent"));
+  for (const [selector, packageName] of [["yolo", "@misterzhou/pi-yolo"], ["subagent", "@misterzhou/pi-subagent"]]) {
+    const manifest = JSON.parse(await readFile(path.join(repoRoot, "packages", selector, "package.json"), "utf8"));
+    assert.equal(manifest.name, packageName);
+    assert.deepEqual(manifest.pi.extensions, ["index.ts"]);
+    assert.ok(manifest.files.includes("README.md"));
+  }
 });
 
 test("requires a public umbrella root with packaged Pi resources", async () => {

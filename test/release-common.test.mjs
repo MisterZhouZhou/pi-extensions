@@ -22,15 +22,21 @@ test("discovers independently versioned release units", async () => {
     (await releaseUnits(repoRoot)).map(({ selector, manifest }) => [selector, manifest.name]),
     [
       ["notify", "@misterzhou/pi-notify"],
+      ["subagent", "@misterzhou/pi-subagent"],
+      ["yolo", "@misterzhou/pi-yolo"],
       ["root", "@misterzhou/pi-extensions"],
     ],
   );
   assert.equal((await releaseUnit("notify", repoRoot)).tagPrefix, "pi-notify");
+  assert.equal((await releaseUnit("subagent", repoRoot)).tagPrefix, "pi-subagent");
+  assert.equal((await releaseUnit("yolo", repoRoot)).tagPrefix, "pi-yolo");
   assert.equal((await releaseUnit("root", repoRoot)).tagPrefix, "pi-extensions");
 });
 
 test("parses only supported package-level stable tags", () => {
   assert.deepEqual(parseReleaseTag("pi-notify@0.2.0"), { selector: "notify", version: "0.2.0" });
+  assert.deepEqual(parseReleaseTag("pi-subagent@0.2.0"), { selector: "subagent", version: "0.2.0" });
+  assert.deepEqual(parseReleaseTag("pi-yolo@0.2.0"), { selector: "yolo", version: "0.2.0" });
   assert.deepEqual(parseReleaseTag("pi-extensions@0.1.1"), { selector: "root", version: "0.1.1" });
   assert.throws(() => parseReleaseTag("v0.2.0"), /unsupported release tag/u);
   assert.throws(() => parseReleaseTag("pi-notify@0.2.0-beta.1"), /stable version/u);
@@ -42,7 +48,7 @@ test("validates selectors and stable manifest versions", async () => {
   assert.equal(stableVersion("01.0.0"), false);
   assert.equal(stableVersion("0.1.0-beta.1"), false);
   assert.equal(stableVersion("v0.1.0"), false);
-  await assert.rejects(() => releaseUnit("missing", repoRoot), /selector must be root or notify/u);
+  await assert.rejects(() => releaseUnit("missing", repoRoot), /release unit does not exist: missing/u);
 });
 
 test("compares strict stable versions numerically", () => {

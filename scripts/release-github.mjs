@@ -14,21 +14,21 @@ import {
   withTempDirectory,
 } from "./release-common.mjs";
 
-const USAGE = "usage: npm run release-github -- <notify|root|all>";
+const USAGE = "usage: npm run release-github -- <package-selector|all>";
 
 function interactiveTerminal(input = process.stdin, output = process.stdout) {
   return input.isTTY === true && output.isTTY === true;
 }
 
 export function resolveGithubScope(argv = []) {
-  if (argv.length !== 1 || !["notify", "root", "all"].includes(argv[0])) throw new Error(USAGE);
+  if (argv.length !== 1 || (argv[0] !== "all" && !/^[a-z0-9-]+$/u.test(argv[0]))) throw new Error(USAGE);
   return argv[0];
 }
 
-export function releaseCommitPaths(scope) {
-  if (scope === "notify") return ["packages/notify/package.json", "package-lock.json"];
+export function releaseCommitPaths(scope, units = {}) {
+  if (scope !== "all" && units[scope]) return [units[scope].workspace ? `packages/${scope}/package.json` : "package.json", "package-lock.json"];
   if (scope === "root") return ["package.json", "package-lock.json"];
-  if (scope === "all") return ["packages/notify/package.json", "package.json", "package-lock.json"];
+  if (scope === "all") return [...Object.values(units).map((unit) => unit.workspace ? `packages/${unit.selector}/package.json` : "package.json"), "package-lock.json"];
   throw new Error(USAGE);
 }
 
@@ -38,7 +38,7 @@ function tagFor(unit, version) {
 
 function commitMessage(scope, units) {
   if (scope === "all") {
-    return `chore(release): publish notify ${units.notify} and root ${units.root}`;
+    return `chore(release): publish ${Object.entries(units).map(([selector, version]) => `${selector} ${version}`).join(", ")}`;
   }
   return `chore(release): publish ${scope} ${units[scope]}`;
 }
@@ -97,7 +97,7 @@ async function ensureGithubBase(runner, root, env) {
 }
 
 async function versionInput(scope, units, ask) {
-  const selectors = scope === "all" ? ["notify", "root"] : [scope];
+  const selectors = scope === "all" ? Object.keys(units).filter((selector) => selector !== "root").concat("root") : [scope];
   const result = {};
   for (const selector of selectors) {
     const unit = units[selector];
@@ -125,10 +125,11 @@ export async function githubRelease(argv = [], options = {}) {
 
   const discovered = options.releaseUnits ? await options.releaseUnits(root) : await releaseUnits(root);
   const units = Object.fromEntries(discovered.map((unit) => [unit.selector, unit]));
+  if (scope !== "all" && !units[scope]) throw new Error(`release unit does not exist: ${scope}`);
   const ask = options.ask;
   if (typeof ask !== "function") throw new Error("interactive release input is unavailable");
   const versions = await versionInput(scope, units, ask);
-  const selected = (scope === "all" ? ["notify", "root"] : [scope]).map((selector) => ({
+  const selected = (scope === "all" ? Object.keys(units).filter((selector) => selector !== "root").concat("root") : [scope]).map((selector) => ({
     selector,
     unit: units[selector],
     version: versions[selector],
@@ -137,7 +138,7 @@ export async function githubRelease(argv = [], options = {}) {
   const snapshots = new Map([[lockfile, await readFile(lockfile)]]);
   for (const item of selected) snapshots.set(item.unit.manifestPath, await readFile(item.unit.manifestPath));
   const tags = selected.map(({ unit, version }) => tagFor(unit, version));
-  const commitPaths = releaseCommitPaths(scope);
+  const commitPaths = releaseCommitPaths(scope, units);
   let committed = false;
   try {
     for (const item of selected) {

@@ -1,0 +1,22 @@
+{
+  "name": "@misterzhou/pi-subagent",
+  "version": "0.1.0",
+  "description": "Subagent discovery and orchestration for Pi.",
+  "keywords": ["pi-package", "pi", "subagent", "agent"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
+    "directory": "packages/subagent"
+  },
+  "files": ["index.ts", "agents.ts", "process.ts", "child-guard.ts", "agents", "README.md"],
+  "type": "module",
+  "publishConfig": { "access": "public" },
+  "pi": { "extensions": ["index.ts"] },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "engines": { "node": ">=22.19.0" }
+}

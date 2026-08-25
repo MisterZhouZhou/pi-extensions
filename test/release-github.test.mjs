@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,13 +7,14 @@ import test from "node:test";
 import { githubRelease, releaseCommitPaths, resolveGithubScope } from "../scripts/release-github.mjs";
 
 function releaseUnit(selector, root, version = "0.1.0") {
-  const workspace = selector === "notify";
+  const workspace = selector !== "root";
+  const packageName = selector === "root" ? "@misterzhou/pi-extensions" : `@misterzhou/pi-${selector}`;
   return {
     selector,
-    tagPrefix: workspace ? "pi-notify" : "pi-extensions",
-    root: workspace ? path.join(root, "packages/notify") : root,
-    manifestPath: workspace ? path.join(root, "packages/notify/package.json") : path.join(root, "package.json"),
-    manifest: { name: workspace ? "@misterzhou/pi-notify" : "@misterzhou/pi-extensions", version },
+    tagPrefix: packageName.split("/").at(-1),
+    root: workspace ? path.join(root, "packages", selector) : root,
+    manifestPath: workspace ? path.join(root, "packages", selector, "package.json") : path.join(root, "package.json"),
+    manifest: { name: packageName, version },
     workspace,
   };
 }
@@ -22,10 +23,15 @@ async function state({ answers = ["0.1.1", "y"], dirty = "", head = "abc", remot
   const root = await mkdtemp(path.join(os.tmpdir(), "pi-github-release-"));
   await writeFile(path.join(root, "package.json"), '{"name":"@misterzhou/pi-extensions","version":"0.1.0"}\n');
   await writeFile(path.join(root, "package-lock.json"), '{"version":"0.1.0"}\n');
-  await writeFile(path.join(root, "notify.json"), '{"name":"@misterzhou/pi-notify","version":"0.1.0"}\n');
   const rootUnit = releaseUnit("root", root);
-  const notifyUnit = { ...releaseUnit("notify", root), manifestPath: path.join(root, "notify.json") };
-  const units = [notifyUnit, rootUnit];
+  const notifyUnit = releaseUnit("notify", root);
+  const subagentUnit = releaseUnit("subagent", root);
+  const yoloUnit = releaseUnit("yolo", root);
+  for (const unit of [notifyUnit, subagentUnit, yoloUnit]) {
+    await mkdir(unit.root, { recursive: true });
+    await writeFile(unit.manifestPath, `${JSON.stringify(unit.manifest)}\n`);
+  }
+  const units = [notifyUnit, subagentUnit, yoloUnit, rootUnit];
   const calls = [];
   let answerIndex = 0;
   let currentHead = head;
@@ -70,10 +76,12 @@ async function state({ answers = ["0.1.1", "y"], dirty = "", head = "abc", remot
 
 test("accepts exactly one mutually exclusive GitHub release scope", () => {
   assert.equal(resolveGithubScope(["notify"]), "notify");
+  assert.equal(resolveGithubScope(["subagent"]), "subagent");
+  assert.equal(resolveGithubScope(["yolo"]), "yolo");
   assert.equal(resolveGithubScope(["root"]), "root");
   assert.equal(resolveGithubScope(["all"]), "all");
   for (const argv of [[], ["notify", "0.1.1"], ["notify", "--all"], ["all", "--notify-version", "0.1.1"]]) {
-    assert.throws(() => resolveGithubScope(argv), /usage.*notify.*root.*all/u);
+    assert.throws(() => resolveGithubScope(argv), /package-selector\|all/u);
   }
 });
 
@@ -82,9 +90,12 @@ test("requires an interactive terminal before Git or file operations", async () 
 });
 
 test("uses exact release commit paths for each scope", () => {
-  assert.deepEqual(releaseCommitPaths("notify"), ["packages/notify/package.json", "package-lock.json"]);
+  const units = Object.fromEntries(["notify", "subagent", "yolo", "root"].map((selector) => [selector, releaseUnit(selector, "/repo")]));
+  assert.deepEqual(releaseCommitPaths("notify", units), ["packages/notify/package.json", "package-lock.json"]);
+  assert.deepEqual(releaseCommitPaths("subagent", units), ["packages/subagent/package.json", "package-lock.json"]);
+  assert.deepEqual(releaseCommitPaths("yolo", units), ["packages/yolo/package.json", "package-lock.json"]);
   assert.deepEqual(releaseCommitPaths("root"), ["package.json", "package-lock.json"]);
-  assert.deepEqual(releaseCommitPaths("all"), ["packages/notify/package.json", "package.json", "package-lock.json"]);
+  assert.deepEqual(releaseCommitPaths("all", units), ["packages/notify/package.json", "packages/subagent/package.json", "packages/yolo/package.json", "package.json", "package-lock.json"]);
 });
 
 test("creates one notify release commit, tag, and atomic push", async (t) => {
@@ -100,13 +111,13 @@ test("creates one notify release commit, tag, and atomic push", async (t) => {
   assert.ok(current.calls.some((call) => call.join(" ") === "git push --atomic origin main pi-notify@0.1.1"));
 });
 
-test("all updates both versions in one commit and pushes both tags atomically", async (t) => {
-  const current = await state({ answers: ["0.1.1", "0.2.0", "y"] });
+test("all updates every package in one commit and pushes all tags atomically", async (t) => {
+  const current = await state({ answers: ["0.1.1", "0.2.0", "0.3.0", "0.4.0", "y"] });
   t.after(current.cleanup);
   const result = await githubRelease(["all"], current.options);
-  assert.deepEqual(result.tags, ["pi-notify@0.1.1", "pi-extensions@0.2.0"]);
-  assert.ok(current.calls.some((call) => call.join(" ") === "git commit -m chore(release): publish notify 0.1.1 and root 0.2.0"));
-  assert.ok(current.calls.some((call) => call.join(" ") === "git push --atomic origin main pi-notify@0.1.1 pi-extensions@0.2.0"));
+  assert.deepEqual(result.tags, ["pi-notify@0.1.1", "pi-subagent@0.2.0", "pi-yolo@0.3.0", "pi-extensions@0.4.0"]);
+  assert.ok(current.calls.some((call) => call.join(" ") === "git commit -m chore(release): publish notify 0.1.1, subagent 0.2.0, yolo 0.3.0, root 0.4.0"));
+  assert.ok(current.calls.some((call) => call.join(" ") === "git push --atomic origin main pi-notify@0.1.1 pi-subagent@0.2.0 pi-yolo@0.3.0 pi-extensions@0.4.0"));
 });
 
 test("restores exact release files when a pre-commit operation fails", async (t) => {

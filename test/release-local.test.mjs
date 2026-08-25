@@ -163,8 +163,8 @@ test("parses explicit and menu release selectors and rejects unsafe usage", asyn
     selector: "notify",
     explicitVersion: undefined,
   });
-  assert.match(questions[0], /1\) notify[\s\S]*2\) root[\s\S]*请输入选择 \(1\/2\)/u);
-  for (const [answer, selector] of [["2", "root"], ["notify", "notify"], ["root", "root"]]) {
+  assert.match(questions[0], /1\) notify[\s\S]*2\) yolo[\s\S]*3\) subagent[\s\S]*4\) root[\s\S]*请输入选择：/u);
+  for (const [answer, selector] of [["2", "yolo"], ["3", "subagent"], ["4", "root"], ["notify", "notify"], ["root", "root"]]) {
     assert.deepEqual(await resolveReleaseSelector([], {
       interactive: true,
       ask: async () => answer,
@@ -173,11 +173,21 @@ test("parses explicit and menu release selectors and rejects unsafe usage", asyn
       explicitVersion: undefined,
     });
   }
+  assert.deepEqual(await resolveReleaseSelector([], {
+    interactive: true,
+    ask: async () => "missing",
+  }), {
+    selector: "missing",
+    explicitVersion: undefined,
+  });
   await assert.rejects(
-    () => resolveReleaseSelector([], { interactive: true, ask: async () => "missing" }),
+    () => resolveReleaseSelector([], { interactive: true, ask: async () => "../missing" }),
     /invalid package selection/u,
   );
-  await assert.rejects(() => resolveReleaseSelector(["missing", "0.1.1"], { interactive: true }), /root or notify/u);
+  assert.deepEqual(await resolveReleaseSelector(["missing", "0.1.1"], { interactive: true }), {
+    selector: "missing",
+    explicitVersion: "0.1.1",
+  });
   await assert.rejects(() => resolveReleaseSelector(["notify", "0.1.1", "extra"], { interactive: true }), /usage/u);
   await assert.rejects(() => resolveReleaseSelector(["notify", "0.1.1"], { interactive: false }), /interactive terminal/u);
 });

@@ -1,0 +1,20 @@
+{
+  "name": "@misterzhou/pi-yolo",
+  "version": "0.1.0",
+  "description": "SAFE and YOLO confirmation modes for Pi.",
+  "keywords": ["pi-package", "pi", "yolo", "permissions"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
+    "directory": "packages/yolo"
+  },
+  "files": ["index.ts", "policy.ts", "state.ts", "README.md"],
+  "type": "module",
+  "publishConfig": { "access": "public" },
+  "pi": { "extensions": ["index.ts"] },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "engines": { "node": ">=22.19.0" }
+}

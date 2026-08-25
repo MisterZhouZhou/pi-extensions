@@ -17,10 +17,10 @@ const REPOSITORY = "MisterZhouZhou/pi-extensions";
 const WORKFLOW = "publish.yml";
 const ENVIRONMENT = "npm-release";
 
-const USAGE = "publish-release is an internal GitHub Actions command; usage: npm run publish-release -- <root|notify> --github-actions";
+const USAGE = "publish-release is an internal GitHub Actions command; usage: npm run publish-release -- <package-selector> --github-actions";
 
 function modeFor(argv) {
-  if (argv.length !== 2 || (argv[0] !== "root" && argv[0] !== "notify") || argv[1] !== "--github-actions") {
+  if (argv.length !== 2 || !/^(?:root|[a-z0-9-]+)$/u.test(argv[0]) || argv[1] !== "--github-actions") {
     throw new Error(USAGE);
   }
   return "github-actions";
@@ -50,7 +50,7 @@ export function publishablePaths(unit) {
   if (unit.selector === "root") {
     return [...new Set(["package.json", "package-lock.json", "README.md", "LICENSE", ...(unit.manifest.files ?? [])])];
   }
-  return ["packages/notify", "package-lock.json", "scripts/release-common.mjs", "scripts/publish-release.mjs"];
+  return [`packages/${unit.selector}`, "package-lock.json", "scripts/release-common.mjs", "scripts/publish-release.mjs"];
 }
 
 export async function publishRelease(argv, options = {}) {

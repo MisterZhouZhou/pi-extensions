@@ -5,6 +5,8 @@ on:
     tags:
       - "pi-extensions@*"
       - "pi-notify@*"
+      - "pi-yolo@*"
+      - "pi-subagent@*"
   workflow_dispatch:
     inputs:
       package:
@@ -14,6 +16,8 @@ on:
         options:
           - root
           - notify
+          - yolo
+          - subagent
 
 permissions:
   contents: read
@@ -42,11 +46,24 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "push" ]]; then
-            case "$REF_NAME" in
-              pi-extensions@*) selector=root; manifest=package.json ;;
-              pi-notify@*) selector=notify; manifest=packages/notify/package.json ;;
-              *) echo "Unsupported release tag: $REF_NAME" >&2; exit 1 ;;
-            esac
+            selector=""
+            manifest=""
+            if [[ "$REF_NAME" == pi-extensions@* ]]; then
+              selector=root
+              manifest=package.json
+            else
+              for candidate in packages/*/package.json; do
+                package_name="$(node -p "require('./$candidate').name")"
+                package_tag="${package_name##*/}"
+                if [[ "$REF_NAME" == "$package_tag"@* ]]; then
+                  selector="${candidate#packages/}"
+                  selector="${selector%/package.json}"
+                  manifest="$candidate"
+                  break
+                fi
+              done
+            fi
+            [[ -n "$selector" ]] || { echo "Unsupported release tag: $REF_NAME" >&2; exit 1; }
             tag_version="${REF_NAME##*@}"
             manifest_version="$(node -p "require('./$manifest').version")"
             [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
@@ -60,7 +77,7 @@ jobs:
               exit 1
             }
             selector="$INPUT_PACKAGE"
-            [[ "$selector" == "root" || "$selector" == "notify" ]]
+            [[ "$selector" == "root" || -f "packages/$selector/package.json" ]]
           fi
           echo "selector=$selector" >> "$GITHUB_OUTPUT"
       - name: Set up Node.js

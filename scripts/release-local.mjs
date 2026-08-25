@@ -12,6 +12,7 @@ import {
   publishTarball,
   registryVersion,
   releaseUnit,
+  releaseUnits,
   run,
   stableVersion,
   withTempDirectory,
@@ -19,16 +20,10 @@ import {
 
 const PUBLISH_CHECK_ATTEMPTS = 5;
 const PUBLISH_CHECK_DELAY_MS = 2_000;
-const USAGE = "usage: npm run release-local [-- <root|notify> [X.Y.Z]]";
+const USAGE = "usage: npm run release-local [-- <package-selector> [X.Y.Z]]";
 
 function interactiveTerminal(input = process.stdin, output = process.stdout) {
   return input.isTTY === true && output.isTTY === true;
-}
-
-function validateSelector(selector) {
-  if (selector !== "root" && selector !== "notify") {
-    throw new Error("selector must be root or notify");
-  }
 }
 
 export function incrementStableVersion(currentVersion, releaseType) {
@@ -58,15 +53,13 @@ export async function resolveReleaseSelector(argv = [], options = {}) {
     selector = selector?.trim();
   } else {
     if (typeof options.ask !== "function") throw new Error("interactive release input is unavailable");
-    selector = (await options.ask("请选择发布包：\n1) notify\n2) root\n请输入选择 (1/2): "))?.trim();
-    if (selector === "1") selector = "notify";
-    if (selector === "2") selector = "root";
+    const selectors = options.selectors ?? ["notify", "yolo", "subagent", "root"];
+    selector = (await options.ask(`请选择发布包：\n${selectors.map((item, index) => `${index + 1}) ${item}`).join("\n")}\n请输入选择：`))?.trim();
+    const numeric = Number(selector);
+    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= selectors.length) selector = selectors[numeric - 1];
   }
 
-  if (argv.length === 0 && selector !== "notify" && selector !== "root") {
-    throw new Error("invalid package selection; expected 1, 2, notify, or root");
-  }
-  validateSelector(selector);
+  if (!selector || !/^(?:root|[a-z0-9-]+)$/u.test(selector)) throw new Error("invalid package selection");
   return { selector, explicitVersion };
 }
 
@@ -109,7 +102,7 @@ export function releasePaths(unit) {
       ...scripts,
     ])];
   }
-  return ["packages/notify", "package-lock.json", ...scripts];
+  return [`packages/${unit.selector}`, "package-lock.json", ...scripts];
 }
 
 function updatedUnit(unit, version) {
@@ -174,11 +167,13 @@ export async function releaseLocal(argv = [], options = {}) {
   const ask = options.ask;
   const log = options.log ?? console.log;
   const warn = options.warn ?? console.warn;
+  const discoveredUnits = options.releaseUnits ? await options.releaseUnits(root) : await releaseUnits(root);
   const selectorInput = await resolveReleaseSelector(argv, {
     interactive: options.interactive,
     input: options.input,
     output: options.output,
     ask,
+    selectors: discoveredUnits.map((unit) => unit.selector),
   });
 
   const getUnit = options.releaseUnit ?? releaseUnit;

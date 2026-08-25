@@ -27,12 +27,20 @@ test("release-check reports manifest versions independently without changing the
   const root = await fixture();
   const rootManifestPath = path.join(root, "package.json");
   const notifyManifestPath = path.join(root, "packages/notify/package.json");
+  const subagentManifestPath = path.join(root, "packages/subagent/package.json");
+  const yoloManifestPath = path.join(root, "packages/yolo/package.json");
   const rootManifest = JSON.parse(await readFile(rootManifestPath, "utf8"));
   const notifyManifest = JSON.parse(await readFile(notifyManifestPath, "utf8"));
+  const subagentManifest = JSON.parse(await readFile(subagentManifestPath, "utf8"));
+  const yoloManifest = JSON.parse(await readFile(yoloManifestPath, "utf8"));
   rootManifest.version = "2.3.4";
   notifyManifest.version = "7.8.9";
+  subagentManifest.version = "3.4.5";
+  yoloManifest.version = "4.5.6";
   await writeFile(rootManifestPath, `${JSON.stringify(rootManifest, null, 2)}\n`);
   await writeFile(notifyManifestPath, `${JSON.stringify(notifyManifest, null, 2)}\n`);
+  await writeFile(subagentManifestPath, `${JSON.stringify(subagentManifest, null, 2)}\n`);
+  await writeFile(yoloManifestPath, `${JSON.stringify(yoloManifest, null, 2)}\n`);
   const lockfile = path.join(root, "package-lock.json");
   const lockfileBefore = await readFile(lockfile);
   const calls = [];
@@ -44,6 +52,8 @@ test("release-check reports manifest versions independently without changing the
 
   assert.deepEqual(result.packages, [
     { selector: "notify", name: "@misterzhou/pi-notify", version: "7.8.9", status: "published" },
+    { selector: "subagent", name: "@misterzhou/pi-subagent", version: "3.4.5", status: "pending" },
+    { selector: "yolo", name: "@misterzhou/pi-yolo", version: "4.5.6", status: "pending" },
     { selector: "root", name: "@misterzhou/pi-extensions", version: "2.3.4", status: "pending" },
   ]);
   assert.equal(result.checked, true);

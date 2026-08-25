@@ -10,6 +10,8 @@
     "release-check": "node scripts/release-check.mjs",
     "release-local": "node scripts/release-local.mjs",
     "release-local-notify": "npm run release-local -- notify",
+    "release-local-yolo": "npm run release-local -- yolo",
+    "release-local-subagent": "npm run release-local -- subagent",
     "release-github": "node scripts/release-github.mjs",
     "publish-release": "node scripts/publish-release.mjs"
   },
@@ -26,6 +28,8 @@
   },
   "files": [
     "packages/notify",
+    "packages/yolo",
+    "packages/subagent",
     "README.md",
     "LICENSE"
   ],
@@ -44,7 +48,9 @@
   },
   "pi": {
     "extensions": [
-      "./packages/notify/index.ts"
+      "./packages/notify/index.ts",
+      "./packages/yolo/index.ts",
+      "./packages/subagent/index.ts"
     ]
   },
   "devDependencies": {
