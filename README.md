@@ -4,7 +4,7 @@
 
 ## 安装
 
-整体安装（包含 Notify、YOLO 和 Subagent）：
+整体安装（包含 Notify、YOLO、Subagent 和 Status Line）：
 
 ```bash
 pi install npm:@misterzhou/pi-extensions
@@ -16,11 +16,12 @@ pi install npm:@misterzhou/pi-extensions
 pi install npm:@misterzhou/pi-notify
 ```
 
-仅安装 YOLO 或 Subagent：
+仅安装 YOLO、Subagent 或 Status Line：
 
 ```bash
 pi install npm:@misterzhou/pi-yolo
 pi install npm:@misterzhou/pi-subagent
+pi install npm:@misterzhou/pi-status-line
 ```
 
 > 聚合包已经包含三个独立扩展，不要把 `@misterzhou/pi-extensions` 与其中任何单包同时安装，否则扩展可能被重复加载。切换安装方式前请先用 `pi uninstall npm:<包名>` 卸载原包。
@@ -33,6 +34,7 @@ pi install npm:@misterzhou/pi-subagent
 | `@misterzhou/pi-notify` | [`packages/notify`](packages/notify) | macOS 回复完成通知 |
 | `@misterzhou/pi-yolo` | [`packages/yolo`](packages/yolo) | SAFE/YOLO 确认模式与快捷切换 |
 | `@misterzhou/pi-subagent` | [`packages/subagent`](packages/subagent) | explore、planner、worker、reviewer 子 Agent 编排 |
+| `@misterzhou/pi-status-line` | [`packages/status-line`](packages/status-line) | 中文状态栏：累计输入、输出、总 Token、思考模式和上下文占比 |
 
 ## 本地开发与验证
 
@@ -45,6 +47,7 @@ npm pack --dry-run --json
 npm pack --workspace @misterzhou/pi-notify --dry-run --json
 npm pack --workspace @misterzhou/pi-yolo --dry-run --json
 npm pack --workspace @misterzhou/pi-subagent --dry-run --json
+npm pack --workspace @misterzhou/pi-status-line --dry-run --json
 ```
 
 临时加载 Notify，不写入 Pi 安装配置：
@@ -58,6 +61,7 @@ pi -e ./packages/notify
 ```bash
 pi --no-extensions -e ./packages/yolo --no-session
 pi --no-extensions -e ./packages/subagent --no-session
+pi --no-extensions -e ./packages/status-line --no-session
 ```
 
 ## 发布流程
@@ -82,12 +86,14 @@ npm run release-local
 npm run release-local -- notify
 npm run release-local -- yolo
 npm run release-local -- subagent
+npm run release-local -- status-line
 npm run release-local -- root
 
 # AI/脚本：指定单包和精确目标版本
 npm run release-local -- notify 0.1.1
 npm run release-local -- yolo 0.1.1
 npm run release-local -- subagent 0.1.1
+npm run release-local -- status-line 0.1.1
 npm run release-local -- root 0.1.1
 ```
 
@@ -116,7 +122,7 @@ npm run release-github -- all
 
 ```bash
 git push --atomic origin main pi-notify@0.1.1
-git push --atomic origin main pi-notify@0.1.1 pi-yolo@0.1.1 pi-subagent@0.1.1 pi-extensions@0.1.1
+git push --atomic origin main pi-notify@0.1.1 pi-yolo@0.1.1 pi-subagent@0.1.1 pi-status-line@0.1.1 pi-extensions@0.1.1
 ```
 
 Git refs 的 push 是原子的；但 `all` 触发的多个 Actions job 和多个 npm publish **不是原子事务**，仍可能部分成功、部分失败。任一扩展源码更新通常应选择 `all`，这样独立安装用户和聚合包用户都能获得新版本。
@@ -131,12 +137,13 @@ release commit 之前失败或取消会恢复脚本改动；commit 创建之后�
 npm run publish-release -- notify --github-actions
 npm run publish-release -- yolo --github-actions
 npm run publish-release -- subagent --github-actions
+npm run publish-release -- status-line --github-actions
 npm run publish-release -- root --github-actions
 ```
 
 它负责验证 Actions 仓库、workflow、environment、selector 与 tag/manifest 版本，随后运行 `npm run check`、打包、查询 registry 并执行真正的 `npm publish`。tag 只是触发信号，`publish-release` 才是 Actions 内实际发布 npm 包的程序。本机调用或 `--dry-run` 会被拒绝。
 
-也可以从 GitHub Actions 的 **Publish npm package** 页面选择 `root`、`notify`、`yolo` 或 `subagent`，从 `main` 手动发布当前 manifest 版本。首次使用前，需分别为四个 npm 包配置 Trusted Publisher：仓库 `MisterZhouZhou/pi-extensions`、工作流 `publish.yml`、environment `npm-release`；无需长期 `NPM_TOKEN`。
+也可以从 GitHub Actions 的 **Publish npm package** 页面选择 `root`、`notify`、`yolo`、`subagent` 或 `status-line`，从 `main` 手动发布当前 manifest 版本。首次使用前，需分别为五个 npm 包配置 Trusted Publisher：仓库 `MisterZhouZhou/pi-extensions`、工作流 `publish.yml`、environment `npm-release`；无需长期 `NPM_TOKEN`。
 
 ## 新增 Package
 

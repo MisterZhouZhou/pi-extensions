@@ -13,8 +13,9 @@ test("publish workflow supports package tags and manual single-package publishin
   assert.match(workflow, /pi-notify@\*/u);
   assert.match(workflow, /pi-yolo@\*/u);
   assert.match(workflow, /pi-subagent@\*/u);
+  assert.match(workflow, /pi-status-line@\*/u);
   assert.match(workflow, /workflow_dispatch:[\s\S]*type: choice/u);
-  assert.match(workflow, /options:[\s\S]*- root[\s\S]*- notify[\s\S]*- yolo[\s\S]*- subagent/u);
+  assert.match(workflow, /options:[\s\S]*- root[\s\S]*- notify[\s\S]*- yolo[\s\S]*- subagent[\s\S]*- status-line/u);
   assert.match(workflow, /Resolve release selector/u);
   assert.match(workflow, /PI_RELEASE_SELECTOR: \$\{\{ steps\.release\.outputs\.selector \}\}/u);
   assert.match(workflow, /publish-release -- "\$PI_RELEASE_SELECTOR" --github-actions/u);

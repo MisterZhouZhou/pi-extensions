@@ -12,6 +12,7 @@
     "release-local-notify": "npm run release-local -- notify",
     "release-local-yolo": "npm run release-local -- yolo",
     "release-local-subagent": "npm run release-local -- subagent",
+    "release-local-status-line": "npm run release-local -- status-line",
     "release-github": "node scripts/release-github.mjs",
     "publish-release": "node scripts/publish-release.mjs"
   },
@@ -30,6 +31,7 @@
     "packages/notify",
     "packages/yolo",
     "packages/subagent",
+    "packages/status-line",
     "README.md",
     "LICENSE"
   ],
@@ -44,18 +46,21 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
   },
   "pi": {
     "extensions": [
       "./packages/notify/index.ts",
       "./packages/yolo/index.ts",
-      "./packages/subagent/index.ts"
+      "./packages/subagent/index.ts",
+      "./packages/status-line/index.ts"
     ]
   },
   "devDependencies": {
     "@earendil-works/pi-agent-core": "^0.84.1",
     "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@earendil-works/pi-tui": "^0.84.3",
     "@types/node": "^22.19.0",
     "typescript": "^6.0.0"
   }

@@ -163,8 +163,8 @@ test("parses explicit and menu release selectors and rejects unsafe usage", asyn
     selector: "notify",
     explicitVersion: undefined,
   });
-  assert.match(questions[0], /1\) notify[\s\S]*2\) yolo[\s\S]*3\) subagent[\s\S]*4\) root[\s\S]*请输入选择：/u);
-  for (const [answer, selector] of [["2", "yolo"], ["3", "subagent"], ["4", "root"], ["notify", "notify"], ["root", "root"]]) {
+  assert.match(questions[0], /1\) notify[\s\S]*2\) yolo[\s\S]*3\) subagent[\s\S]*4\) status-line[\s\S]*5\) root[\s\S]*请输入选择：/u);
+  for (const [answer, selector] of [["2", "yolo"], ["3", "subagent"], ["4", "status-line"], ["5", "root"], ["notify", "notify"], ["root", "root"]]) {
     assert.deepEqual(await resolveReleaseSelector([], {
       interactive: true,
       ask: async () => answer,

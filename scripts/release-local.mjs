@@ -53,7 +53,7 @@ export async function resolveReleaseSelector(argv = [], options = {}) {
     selector = selector?.trim();
   } else {
     if (typeof options.ask !== "function") throw new Error("interactive release input is unavailable");
-    const selectors = options.selectors ?? ["notify", "yolo", "subagent", "root"];
+    const selectors = options.selectors ?? ["notify", "yolo", "subagent", "status-line", "root"];
     selector = (await options.ask(`请选择发布包：\n${selectors.map((item, index) => `${index + 1}) ${item}`).join("\n")}\n请输入选择：`))?.trim();
     const numeric = Number(selector);
     if (Number.isInteger(numeric) && numeric >= 1 && numeric <= selectors.length) selector = selectors[numeric - 1];

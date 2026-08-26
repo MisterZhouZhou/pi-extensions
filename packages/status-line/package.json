@@ -1,0 +1,38 @@
+{
+  "name": "@misterzhou/pi-status-line",
+  "version": "0.1.0",
+  "description": "Pi 中文状态栏扩展，显示会话累计输入、输出、总 Token、思考模式和上下文占比。",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "status-line",
+    "token",
+    "context"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
+    "directory": "packages/status-line"
+  },
+  "files": [
+    "index.ts",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

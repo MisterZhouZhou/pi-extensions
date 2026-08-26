@@ -32,3 +32,5 @@ jobs:
         run: npm pack --workspace @misterzhou/pi-yolo --dry-run --json
       - name: Inspect subagent package
         run: npm pack --workspace @misterzhou/pi-subagent --dry-run --json
+      - name: Inspect status-line package
+        run: npm pack --workspace @misterzhou/pi-status-line --dry-run --json

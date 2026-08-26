@@ -84,17 +84,23 @@ test("repository package manifests satisfy Pi package policy", async () => {
   assert.deepEqual(await validateRepository(repoRoot), []);
 });
 
-test("umbrella and standalone manifests enumerate all three extensions", async () => {
+test("umbrella and standalone manifests enumerate all four extensions", async () => {
   const root = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.deepEqual(root.pi.extensions, [
     "./packages/notify/index.ts",
     "./packages/yolo/index.ts",
     "./packages/subagent/index.ts",
+    "./packages/status-line/index.ts",
   ]);
   assert.ok(root.files.includes("packages/notify"));
   assert.ok(root.files.includes("packages/yolo"));
   assert.ok(root.files.includes("packages/subagent"));
-  for (const [selector, packageName] of [["yolo", "@misterzhou/pi-yolo"], ["subagent", "@misterzhou/pi-subagent"]]) {
+  assert.ok(root.files.includes("packages/status-line"));
+  for (const [selector, packageName] of [
+    ["yolo", "@misterzhou/pi-yolo"],
+    ["subagent", "@misterzhou/pi-subagent"],
+    ["status-line", "@misterzhou/pi-status-line"],
+  ]) {
     const manifest = JSON.parse(await readFile(path.join(repoRoot, "packages", selector, "package.json"), "utf8"));
     assert.equal(manifest.name, packageName);
     assert.deepEqual(manifest.pi.extensions, ["index.ts"]);
