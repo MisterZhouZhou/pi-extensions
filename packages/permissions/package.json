@@ -1,20 +1,40 @@
 {
   "name": "@misterzhou/pi-permissions",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Readonly, manual, and YOLO permission modes for Pi tool calls.",
-  "keywords": ["pi-package", "pi", "permissions", "readonly", "manual", "yolo"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "permissions",
+    "readonly",
+    "manual",
+    "yolo"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
     "directory": "packages/permissions"
   },
-  "files": ["index.ts", "policy.ts", "state.ts", "README.md"],
+  "files": [
+    "index.ts",
+    "policy.ts",
+    "state.ts",
+    "README.md"
+  ],
   "type": "module",
-  "publishConfig": { "access": "public" },
-  "pi": { "extensions": ["index.ts"] },
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "index.ts"
+    ]
+  },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },
-  "engines": { "node": ">=22.19.0" }
+  "engines": {
+    "node": ">=22.19.0"
+  }
 }
