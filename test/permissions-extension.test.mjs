@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { registerPermissionsExtension } from "../packages/permissions/index.ts";
 
+function stripAnsi(value) {
+  return value.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
 function fakePi({ permissions = "manual", activeTools = ["read", "bash", "edit", "write", "custom"] } = {}) {
   const flags = new Map();
   const commands = new Map();
@@ -61,7 +65,9 @@ test("registers permission flag, command, shortcut and starts in manual", async 
 
   const ctx = context();
   await pi.handlers.get("session_start")({}, ctx.value);
-  assert.deepEqual(ctx.statuses.at(-1), ["pi-permissions", "✋ MANUAL"]);
+  const status = ctx.statuses.at(-1);
+  assert.deepEqual([status[0], stripAnsi(status[1])], ["pi-permissions", "✋MANUAL"]);
+  assert.match(status[1], /^\x1b\[38;2;0;215;255m/);
 });
 
 test("readonly filters active tools and restores them when switching", async () => {
@@ -109,5 +115,6 @@ test("restores the last valid mode from the current session", async () => {
     { type: "custom", customType: "pi-permissions-mode", data: { mode: "manual" } },
   ] });
   await pi.handlers.get("session_start")({}, ctx.value);
-  assert.deepEqual(ctx.statuses.at(-1), ["pi-permissions", "✋ MANUAL"]);
+  const status = ctx.statuses.at(-1);
+  assert.deepEqual([status[0], stripAnsi(status[1])], ["pi-permissions", "✋MANUAL"]);
 });

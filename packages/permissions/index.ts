@@ -7,13 +7,21 @@ const STATUS_KEY = "pi-permissions";
 const PERMISSION_FLAG = "permissions";
 const MODES: PermissionMode[] = ["readonly", "manual", "yolo"];
 
+const MODE_STATUS_COLORS: Record<PermissionMode, string> = {
+  readonly: "\x1b[38;2;95;135;255m", // blue: restricted access
+  manual: "\x1b[38;2;0;215;255m", // cyan: approval required
+  yolo: "\x1b[38;2;255;95;95m", // red: automatic access
+};
+const ANSI_FG_RESET = "\x1b[39m";
+
 function modeLabel(mode: PermissionMode): string {
   return mode === "readonly" ? "READONLY" : mode === "manual" ? "MANUAL" : "YOLO";
 }
 
 function renderStatus(ctx: ExtensionContext, mode: PermissionMode): void {
   const icon = mode === "readonly" ? "🔒" : mode === "manual" ? "✋" : "⚡";
-  ctx.ui.setStatus(STATUS_KEY, `${icon} ${modeLabel(mode)}`);
+  const text = `${icon}${modeLabel(mode)}`;
+  ctx.ui.setStatus(STATUS_KEY, `${MODE_STATUS_COLORS[mode]}${text}${ANSI_FG_RESET}`);
 }
 
 function notifyMode(ctx: ExtensionContext, mode: PermissionMode): void {
@@ -23,7 +31,7 @@ function notifyMode(ctx: ExtensionContext, mode: PermissionMode): void {
     : mode === "manual"
       ? "Permission mode: MANUAL (side-effecting operations require approval)"
       : "Permission mode: YOLO (ordinary operations are auto-approved; catastrophic Bash remains blocked)";
-  ctx.ui.notify(text, mode === "yolo" ? "warning" : "info");
+  ctx.ui.notify(`${text} · Shift+Tab 可切换权限模式`, mode === "yolo" ? "warning" : "info");
 }
 
 function initialMode(value: unknown): PermissionMode {
@@ -76,7 +84,25 @@ export function registerPermissionsExtension(pi: ExtensionAPI): void {
   function chooseMode(ctx: ExtensionContext, argument: string): void {
     const value = argument.trim().toLowerCase();
     if (!value) {
-      ctx.ui.notify(`Permission mode: ${modeLabel(state.getMode())}. Usage: /permissions <readonly|manual|yolo|status>`, "info");
+      const currentMode = state.getMode();
+      const modeOptions: Array<{ mode: PermissionMode; label: string }> = [
+        { mode: "readonly", label: "🔒 READONLY · 只读" },
+        { mode: "manual", label: "✋ MANUAL · 手动确认" },
+        { mode: "yolo", label: "⚡YOLO · 自动放行" },
+      ];
+      const options = [
+        ...modeOptions.filter(({ mode }) => mode === currentMode),
+        ...modeOptions
+          .filter(({ mode }) => mode !== currentMode)
+          .map((option) => option),
+      ].map(({ mode, label }) => mode === currentMode ? `${label}（当前）` : label);
+      void ctx.ui.select(
+        `选择权限模式（当前：${modeLabel(currentMode)}，Shift+Tab 可快速切换）`,
+        options,
+      ).then((selected) => {
+        const nextMode = modeOptions.find(({ label }) => selected?.startsWith(label))?.mode;
+        if (nextMode) setMode(ctx, nextMode);
+      });
       return;
     }
     if (value === "status") {

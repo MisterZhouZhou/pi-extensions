@@ -470,8 +470,14 @@ export function registerStatusLineExtension(pi: ExtensionAPI): void {
             : config.cwd && config.git && branch
               ? `${pathLabel} ${theme.fg("dim", "(")}${theme.fg("accent", branch)}${theme.fg("dim", ")")}`
               : location;
-          const statuses = config.extensions ? Array.from(footerData.getExtensionStatuses().values()) : [];
-          const secondLine = [locationStyled, ...statuses].filter(Boolean).join(` ${theme.fg("dim", "│")} `);
+          const statusEntries = config.extensions ? Array.from(footerData.getExtensionStatuses()) : [];
+          const permissionStatuses = statusEntries
+            .filter(([key]) => key === "pi-permissions")
+            .map(([, text]) => text);
+          const otherStatuses = statusEntries
+            .filter(([key]) => key !== "pi-permissions")
+            .map(([, text]) => text);
+          const secondLine = [locationStyled, ...permissionStatuses, ...otherStatuses].filter(Boolean).join(` ${theme.fg("dim", "│")} `);
 
           return [truncateToWidth(firstLine, width), truncateToWidth(secondLine, width)];
         },
