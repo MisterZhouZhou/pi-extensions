@@ -1,6 +1,6 @@
 {
   "name": "@misterzhou/pi-status-line",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi 中文状态栏扩展，显示会话累计输入、输出、总 Token、思考模式和上下文占比。",
   "keywords": [
     "pi-package",

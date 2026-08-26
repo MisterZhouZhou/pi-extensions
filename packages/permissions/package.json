@@ -1,13 +1,13 @@
 {
-  "name": "@misterzhou/pi-yolo",
+  "name": "@misterzhou/pi-permissions",
   "version": "0.1.0",
-  "description": "SAFE and YOLO confirmation modes for Pi.",
-  "keywords": ["pi-package", "pi", "yolo", "permissions"],
+  "description": "Readonly, manual, and YOLO permission modes for Pi tool calls.",
+  "keywords": ["pi-package", "pi", "permissions", "readonly", "manual", "yolo"],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MisterZhouZhou/pi-extensions.git",
-    "directory": "packages/yolo"
+    "directory": "packages/permissions"
   },
   "files": ["index.ts", "policy.ts", "state.ts", "README.md"],
   "type": "module",

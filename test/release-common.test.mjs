@@ -22,24 +22,24 @@ test("discovers independently versioned release units", async () => {
     (await releaseUnits(repoRoot)).map(({ selector, manifest }) => [selector, manifest.name]),
     [
       ["notify", "@misterzhou/pi-notify"],
+      ["permissions", "@misterzhou/pi-permissions"],
       ["status-line", "@misterzhou/pi-status-line"],
       ["subagent", "@misterzhou/pi-subagent"],
-      ["yolo", "@misterzhou/pi-yolo"],
       ["root", "@misterzhou/pi-extensions"],
     ],
   );
   assert.equal((await releaseUnit("notify", repoRoot)).tagPrefix, "pi-notify");
+  assert.equal((await releaseUnit("permissions", repoRoot)).tagPrefix, "pi-permissions");
   assert.equal((await releaseUnit("status-line", repoRoot)).tagPrefix, "pi-status-line");
   assert.equal((await releaseUnit("subagent", repoRoot)).tagPrefix, "pi-subagent");
-  assert.equal((await releaseUnit("yolo", repoRoot)).tagPrefix, "pi-yolo");
   assert.equal((await releaseUnit("root", repoRoot)).tagPrefix, "pi-extensions");
 });
 
 test("parses only supported package-level stable tags", () => {
   assert.deepEqual(parseReleaseTag("pi-notify@0.2.0"), { selector: "notify", version: "0.2.0" });
+  assert.deepEqual(parseReleaseTag("pi-permissions@0.2.0"), { selector: "permissions", version: "0.2.0" });
   assert.deepEqual(parseReleaseTag("pi-status-line@0.2.0"), { selector: "status-line", version: "0.2.0" });
   assert.deepEqual(parseReleaseTag("pi-subagent@0.2.0"), { selector: "subagent", version: "0.2.0" });
-  assert.deepEqual(parseReleaseTag("pi-yolo@0.2.0"), { selector: "yolo", version: "0.2.0" });
   assert.deepEqual(parseReleaseTag("pi-extensions@0.1.1"), { selector: "root", version: "0.1.1" });
   assert.throws(() => parseReleaseTag("v0.2.0"), /unsupported release tag/u);
   assert.throws(() => parseReleaseTag("pi-notify@0.2.0-beta.1"), /stable version/u);

@@ -1,5 +1,4 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Container, Key, Spacer, Text, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 interface TokenTotals {
@@ -181,26 +180,67 @@ export function formatTokenSummary(totals: TokenTotals): string {
   ].join(" ");
 }
 
-function topLine(
-  state: StatusLineState,
-  config: StatusDisplayConfig,
-  ctx: ExtensionContext,
-  theme: Theme,
-): string {
+function contextColor(percent: number | null | undefined): "success" | "warning" | "error" {
+  if (percent === null || percent === undefined) return "success";
+  if (percent >= 80) return "error";
+  if (percent >= 60) return "warning";
+  return "success";
+}
+
+const THINKING_COLOR_KEYS: Record<string, string> = {
+  off: "thinkingOff",
+  minimal: "thinkingMinimal",
+  low: "thinkingLow",
+  medium: "thinkingMedium",
+  high: "thinkingHigh",
+  xhigh: "thinkingXhigh",
+  max: "thinkingMax",
+};
+
+interface ThemeLike {
+  fg(color: string, text: string): string;
+}
+
+interface TopLineOptions {
+  state: StatusLineState;
+  config: StatusDisplayConfig;
+  ctx: ExtensionContext;
+  theme: ThemeLike;
+}
+
+function topLine({ state, config, ctx, theme }: TopLineOptions): string {
   const totals = state.totals();
   const metrics: string[] = [];
-  if (config.tokens) metrics.push(formatTokenSummary(totals));
-  if (config.thinking) metrics.push(`思考：${formatThinkingLevel(ctx.thinkingLevel)}`);
+
+  if (config.tokens) {
+    metrics.push(formatTokenSummary(totals));
+  }
+  if (config.thinking) {
+    const level = typeof ctx.thinkingLevel === "string" ? ctx.thinkingLevel : "";
+    const colorKey = THINKING_COLOR_KEYS[level] ?? "muted";
+    metrics.push(`思考：${theme.fg(colorKey, formatThinkingLevel(ctx.thinkingLevel))}`);
+  }
   if (config.contextPercent && config.contextWindow) {
-    metrics.push(`上下文：${formatContextUsage(ctx)}`);
+    const usage = ctx.getContextUsage();
+    const percentLabel = usage?.percent === null || usage?.percent === undefined
+      ? "--"
+      : `${usage.percent.toFixed(1)}%`;
+    const windowSize = usage?.contextWindow ?? ctx.model?.contextWindow;
+    const windowLabel = windowSize && windowSize > 0 ? formatTokenCount(windowSize) : "--";
+    const color = contextColor(usage?.percent);
+    metrics.push(`上下文：${theme.fg(color, percentLabel)}${theme.fg("dim", "/")}${windowLabel}`);
   } else if (config.contextPercent) {
     const usage = ctx.getContextUsage();
-    metrics.push(`上下文：${usage?.percent === null || usage?.percent === undefined ? "--" : `${usage.percent.toFixed(1)}%`}`);
+    const percentLabel = usage?.percent === null || usage?.percent === undefined
+      ? "--"
+      : `${usage.percent.toFixed(1)}%`;
+    const color = contextColor(usage?.percent);
+    metrics.push(`上下文：${theme.fg(color, percentLabel)}`);
   } else if (config.contextWindow) {
     const contextWindow = ctx.getContextUsage()?.contextWindow ?? ctx.model?.contextWindow;
     metrics.push(`上下文窗口：${contextWindow && contextWindow > 0 ? formatTokenCount(contextWindow) : "--"}`);
   }
-  return theme.fg("dim", metrics.join(" | "));
+  return metrics.join(" | ");
 }
 
 const STATUS_KEY_ALIASES: Record<string, keyof StatusDisplayConfig> = {
@@ -411,7 +451,7 @@ export function registerStatusLineExtension(pi: ExtensionAPI): void {
         render(width: number): string[] {
           if (!sessionActive) return [];
 
-          const metrics = topLine(state, config, ctx, theme);
+          const metrics = topLine({ state, config, ctx, theme });
           const provider = ctx.model?.provider;
           const model = ctx.model?.id ?? "";
           const modelLabel = config.model ? (provider ? `(${provider}) ${model}` : model) : "";
@@ -422,11 +462,16 @@ export function registerStatusLineExtension(pi: ExtensionAPI): void {
             : truncateToWidth(metrics, width);
 
           const branch = footerData.getGitBranch();
+          const pathLabel = formatUserPath(ctx.cwd);
           const location = config.cwd
-            ? (config.git && branch ? `${formatUserPath(ctx.cwd)} (${branch})` : formatUserPath(ctx.cwd))
+            ? (config.git && branch ? `${pathLabel} (${branch})` : pathLabel)
             : (config.git && branch ? branch : "");
+          const locationStyled = !location ? ""
+            : config.cwd && config.git && branch
+              ? `${pathLabel} ${theme.fg("dim", "(")}${theme.fg("accent", branch)}${theme.fg("dim", ")")}`
+              : location;
           const statuses = config.extensions ? Array.from(footerData.getExtensionStatuses().values()) : [];
-          const secondLine = [location ? theme.fg("dim", location) : "", ...statuses].filter(Boolean).join(" │ ");
+          const secondLine = [locationStyled, ...statuses].filter(Boolean).join(` ${theme.fg("dim", "│")} `);
 
           return [truncateToWidth(firstLine, width), truncateToWidth(secondLine, width)];
         },

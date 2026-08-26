@@ -26,12 +26,12 @@ async function state({ answers = ["0.1.1", "y"], dirty = "", head = "abc", remot
   const rootUnit = releaseUnit("root", root);
   const notifyUnit = releaseUnit("notify", root);
   const subagentUnit = releaseUnit("subagent", root);
-  const yoloUnit = releaseUnit("yolo", root);
-  for (const unit of [notifyUnit, subagentUnit, yoloUnit]) {
+  const permissionsUnit = releaseUnit("permissions", root);
+  for (const unit of [notifyUnit, permissionsUnit, subagentUnit]) {
     await mkdir(unit.root, { recursive: true });
     await writeFile(unit.manifestPath, `${JSON.stringify(unit.manifest)}\n`);
   }
-  const units = [notifyUnit, subagentUnit, yoloUnit, rootUnit];
+  const units = [notifyUnit, permissionsUnit, subagentUnit, rootUnit];
   const calls = [];
   let answerIndex = 0;
   let currentHead = head;
@@ -77,7 +77,7 @@ async function state({ answers = ["0.1.1", "y"], dirty = "", head = "abc", remot
 test("accepts exactly one mutually exclusive GitHub release scope", () => {
   assert.equal(resolveGithubScope(["notify"]), "notify");
   assert.equal(resolveGithubScope(["subagent"]), "subagent");
-  assert.equal(resolveGithubScope(["yolo"]), "yolo");
+  assert.equal(resolveGithubScope(["permissions"]), "permissions");
   assert.equal(resolveGithubScope(["root"]), "root");
   assert.equal(resolveGithubScope(["all"]), "all");
   for (const argv of [[], ["notify", "0.1.1"], ["notify", "--all"], ["all", "--notify-version", "0.1.1"]]) {
@@ -90,12 +90,12 @@ test("requires an interactive terminal before Git or file operations", async () 
 });
 
 test("uses exact release commit paths for each scope", () => {
-  const units = Object.fromEntries(["notify", "subagent", "yolo", "root"].map((selector) => [selector, releaseUnit(selector, "/repo")]));
+  const units = Object.fromEntries(["notify", "permissions", "subagent", "root"].map((selector) => [selector, releaseUnit(selector, "/repo")]));
   assert.deepEqual(releaseCommitPaths("notify", units), ["packages/notify/package.json", "package-lock.json"]);
   assert.deepEqual(releaseCommitPaths("subagent", units), ["packages/subagent/package.json", "package-lock.json"]);
-  assert.deepEqual(releaseCommitPaths("yolo", units), ["packages/yolo/package.json", "package-lock.json"]);
+  assert.deepEqual(releaseCommitPaths("permissions", units), ["packages/permissions/package.json", "package-lock.json"]);
   assert.deepEqual(releaseCommitPaths("root"), ["package.json", "package-lock.json"]);
-  assert.deepEqual(releaseCommitPaths("all", units), ["packages/notify/package.json", "packages/subagent/package.json", "packages/yolo/package.json", "package.json", "package-lock.json"]);
+  assert.deepEqual(releaseCommitPaths("all", units), ["packages/notify/package.json", "packages/permissions/package.json", "packages/subagent/package.json", "package.json", "package-lock.json"]);
 });
 
 test("creates one notify release commit, tag, and atomic push", async (t) => {
@@ -115,9 +115,9 @@ test("all updates every package in one commit and pushes all tags atomically", a
   const current = await state({ answers: ["0.1.1", "0.2.0", "0.3.0", "0.4.0", "y"] });
   t.after(current.cleanup);
   const result = await githubRelease(["all"], current.options);
-  assert.deepEqual(result.tags, ["pi-notify@0.1.1", "pi-subagent@0.2.0", "pi-yolo@0.3.0", "pi-extensions@0.4.0"]);
-  assert.ok(current.calls.some((call) => call.join(" ") === "git commit -m chore(release): publish notify 0.1.1, subagent 0.2.0, yolo 0.3.0, root 0.4.0"));
-  assert.ok(current.calls.some((call) => call.join(" ") === "git push --atomic origin main pi-notify@0.1.1 pi-subagent@0.2.0 pi-yolo@0.3.0 pi-extensions@0.4.0"));
+  assert.deepEqual(result.tags, ["pi-notify@0.1.1", "pi-permissions@0.2.0", "pi-subagent@0.3.0", "pi-extensions@0.4.0"]);
+  assert.ok(current.calls.some((call) => call.join(" ") === "git commit -m chore(release): publish notify 0.1.1, permissions 0.2.0, subagent 0.3.0, root 0.4.0"));
+  assert.ok(current.calls.some((call) => call.join(" ") === "git push --atomic origin main pi-notify@0.1.1 pi-permissions@0.2.0 pi-subagent@0.3.0 pi-extensions@0.4.0"));
 });
 
 test("restores exact release files when a pre-commit operation fails", async (t) => {

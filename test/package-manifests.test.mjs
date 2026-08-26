@@ -88,16 +88,16 @@ test("umbrella and standalone manifests enumerate all four extensions", async ()
   const root = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   assert.deepEqual(root.pi.extensions, [
     "./packages/notify/index.ts",
-    "./packages/yolo/index.ts",
+    "./packages/permissions/index.ts",
     "./packages/subagent/index.ts",
     "./packages/status-line/index.ts",
   ]);
   assert.ok(root.files.includes("packages/notify"));
-  assert.ok(root.files.includes("packages/yolo"));
+  assert.ok(root.files.includes("packages/permissions"));
   assert.ok(root.files.includes("packages/subagent"));
   assert.ok(root.files.includes("packages/status-line"));
   for (const [selector, packageName] of [
-    ["yolo", "@misterzhou/pi-yolo"],
+    ["permissions", "@misterzhou/pi-permissions"],
     ["subagent", "@misterzhou/pi-subagent"],
     ["status-line", "@misterzhou/pi-status-line"],
   ]) {
